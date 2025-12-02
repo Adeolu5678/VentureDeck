@@ -1,4 +1,5 @@
 import { mutation, query } from './_generated/server';
+import { ensureUserExists } from './users';
 import { v } from 'convex/values';
 
 // Create a new project and its associated workspace
@@ -19,19 +20,12 @@ export const create = mutation({
       throw new Error('Called create project without authentication present');
     }
 
-    // Get the user from the database to verify role (optional for now, but good practice)
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .unique();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    // Ensure user exists (JIT creation)
+    const userId = await ensureUserExists(ctx, identity);
 
     // Create the project
     const projectId = await ctx.db.insert('projects', {
-      ownerId: user._id,
+      ownerId: userId,
       title: args.title,
       tagline: args.tagline,
       description: args.description,
@@ -49,7 +43,7 @@ export const create = mutation({
     const workspaceId = await ctx.db.insert('workspaces', {
       projectId: projectId,
       name: args.title, // Workspace name defaults to Project Title
-      members: [user._id], // Owner is the first member
+      members: [userId], // Owner is the first member
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });

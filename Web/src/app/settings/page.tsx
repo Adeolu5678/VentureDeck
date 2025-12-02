@@ -212,6 +212,9 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </section>
+
+                {/* Certifications */}
+                <CertificationSection />
               </div>
             )}
 
@@ -318,5 +321,112 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function CertificationSection() {
+  const generateUploadUrl = useMutation(api.users.generateUploadUrl);
+  const createCertification = useMutation((api as any).certifications.create);
+  const myCertifications = useQuery((api as any).certifications.list, {}) || [];
+  
+  const [title, setTitle] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !title) {
+      if (!title) alert('Please enter a title first');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const postUrl = await generateUploadUrl();
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      const { storageId } = await result.json();
+
+      await createCertification({
+        title,
+        imageUrl: storageId,
+      });
+      
+      setTitle('');
+      alert('Certification uploaded successfully!');
+    } catch (error) {
+      console.error("Failed to upload certification:", error);
+      alert('Failed to upload certification');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <section className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm">
+      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Shield size={20} className="text-emerald-400" />
+        Certifications
+      </h2>
+
+      <div className="space-y-6">
+        <div className="flex gap-4 items-end">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">Certification Title</label>
+            <input
+              type="text"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none"
+              placeholder="e.g. AWS Solutions Architect"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+          <div className="relative">
+            <input
+              type="file"
+              id="cert-upload"
+              className="hidden"
+              accept="image/*"
+              onChange={handleUpload}
+              disabled={isUploading || !title}
+            />
+            <label
+              htmlFor="cert-upload"
+              className={`px-4 py-3 rounded-xl text-sm font-medium cursor-pointer flex items-center gap-2 transition-colors ${
+                isUploading || !title 
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+              }`}
+            >
+              {isUploading ? 'Uploading...' : 'Upload Certificate'}
+            </label>
+          </div>
+        </div>
+
+        {myCertifications.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-slate-400">Your Certifications</h3>
+            <div className="grid gap-3">
+              {myCertifications.map((cert: any) => (
+                <div key={cert._id} className="flex items-center justify-between p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <span className="font-medium text-slate-200">{cert.title}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full border ${
+                    cert.status === 'verified' 
+                      ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' 
+                      : cert.status === 'rejected'
+                      ? 'bg-red-900/30 text-red-400 border-red-800'
+                      : 'bg-amber-900/30 text-amber-400 border-amber-800'
+                  }`}>
+                    {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

@@ -3,27 +3,119 @@
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
+
   --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-fade-in: fade-in 0.5s ease-out;
+  --animate-slide-up: slide-up 0.5s ease-out;
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes slide-up {
+    0% {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
 }
 
 :root {
-  --background: #121212;
-  --foreground: #f8fafc;
-  --surface: rgba(30, 30, 30, 0.7);
-  --primary: #00a3ff;
-  --accent: #e000ff;
+  /* HSL Values for Opacity Support */
+  --background: hsl(222 47% 11%); /* Deep Slate #0f172a */
+  --foreground: hsl(210 40% 98%); /* Slate 50 */
+
+  --card: hsl(222 47% 11% / 0.6);
+  --card-foreground: hsl(210 40% 98%);
+
+  --popover: hsl(222 47% 11%);
+  --popover-foreground: hsl(210 40% 98%);
+
+  --primary: hsl(252 59% 50%); /* Indigo 600 */
+  --primary-foreground: hsl(210 40% 98%);
+
+  --secondary: hsl(161 94% 30%); /* Emerald 600 */
+  --secondary-foreground: hsl(210 40% 98%);
+
+  --muted: hsl(217 33% 17%); /* Slate 900 */
+  --muted-foreground: hsl(215 20% 65%); /* Slate 400 */
+
+  --accent: hsl(252 59% 50%);
+  --accent-foreground: hsl(210 40% 98%);
+
+  --destructive: hsl(0 62.8% 30.6%);
+  --destructive-foreground: hsl(210 40% 98%);
+
+  --border: hsl(217 33% 17%);
+  --input: hsl(217 33% 17%);
+  --ring: hsl(252 59% 50%);
+
+  --radius: 0.75rem;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* Glassmorphism Utilities */
 @utility glass-panel {
-  background: var(--surface);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  @apply bg-slate-900/40 backdrop-blur-xl border border-white/10 shadow-xl;
+}
+
+@utility glass-button {
+  @apply bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-sm transition-all active:scale-95;
+}
+
+@utility text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(217 33% 17%);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(215 20% 65%);
 }

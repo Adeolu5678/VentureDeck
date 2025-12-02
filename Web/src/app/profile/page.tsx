@@ -10,7 +10,7 @@ import Link from 'next/link';
 export default function ProfilePage() {
   const { user, isLoaded } = useUser();
   const convexUser = useQuery(api.users.getCurrentUser) as any;
-  const [activeTab, setActiveTab] = useState<'about' | 'portfolio' | 'reputation'>('about');
+  const [activeTab, setActiveTab] = useState<'about' | 'portfolio' | 'reputation' | 'certifications'>('about');
 
   if (!isLoaded || !convexUser) return null;
 
@@ -60,12 +60,19 @@ export default function ProfilePage() {
             icon={Shield} 
             label="Reputation" 
           />
+          <TabButton 
+            active={activeTab === 'certifications'} 
+            onClick={() => setActiveTab('certifications')} 
+            icon={Shield} 
+            label="Certifications" 
+          />
         </div>
 
         {/* Content */}
         {activeTab === 'about' && <AboutTab user={convexUser} />}
         {activeTab === 'portfolio' && <PortfolioTab />}
         {activeTab === 'reputation' && <ReputationTab userId={convexUser._id} />}
+        {activeTab === 'certifications' && <CertificationsTab userId={convexUser._id} />}
       </div>
     </div>
   );
@@ -152,6 +159,37 @@ function ReputationTab({ userId }: { userId: any }) {
             </div>
           </div>
           <p className="text-slate-300 text-sm italic">"{vouch.text}"</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CertificationsTab({ userId }: { userId: any }) {
+  const certifications = useQuery((api as any).certifications.list, { targetId: userId }) || [];
+
+  if (certifications.length === 0) {
+    return <div className="text-slate-400 text-center py-12">No certifications yet.</div>;
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {certifications.map((cert: any) => (
+        <div key={cert._id} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+           {/* In a real app, we'd fetch the image URL properly if it's a storage ID */}
+          <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center shrink-0">
+            <Shield className="w-6 h-6 text-emerald-500" />
+          </div>
+          <div>
+            <h3 className="font-medium text-white">{cert.title}</h3>
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${
+              cert.status === 'verified' 
+                ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' 
+                : 'bg-amber-900/30 text-amber-400 border-amber-800'
+            }`}>
+              {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
+            </span>
+          </div>
         </div>
       ))}
     </div>

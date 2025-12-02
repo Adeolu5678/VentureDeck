@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
-import { mutation, query } from './_generated/server';
+import { mutation, query, MutationCtx } from './_generated/server';
 import { Doc, Id } from './_generated/dataModel';
+import { UserIdentity } from 'convex/server';
 
 // Get current user or create if doesn't exist
 export const getCurrentUser = query({
@@ -44,13 +45,17 @@ export const createOrUpdateUser = mutation({
     linkedinUrl: v.optional(v.string()),
     skills: v.optional(v.array(v.string())),
     interests: v.optional(v.array(v.string())),
-    notificationPreferences: v.optional(v.object({
-      email: v.boolean(),
-      push: v.boolean(),
-    })),
-    privacySettings: v.optional(v.object({
-      profileVisibility: v.union(v.literal('public'), v.literal('private')),
-    })),
+    notificationPreferences: v.optional(
+      v.object({
+        email: v.boolean(),
+        push: v.boolean(),
+      })
+    ),
+    privacySettings: v.optional(
+      v.object({
+        profileVisibility: v.union(v.literal('public'), v.literal('private')),
+      })
+    ),
     avatarStorageId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -72,12 +77,20 @@ export const createOrUpdateUser = mutation({
         professionalBio: args.professionalBio,
         linkedinUrl: args.linkedinUrl,
         // Only update role if it's not set (or allow switching? For now, assume sticky role)
-        ...(args.role !== undefined && !existing.role ? { role: args.role } : {}),
+        ...(args.role !== undefined && !existing.role
+          ? { role: args.role }
+          : {}),
         ...(args.skills !== undefined ? { skills: args.skills } : {}),
         ...(args.interests !== undefined ? { interests: args.interests } : {}),
-        ...(args.notificationPreferences !== undefined ? { notificationPreferences: args.notificationPreferences } : {}),
-        ...(args.privacySettings !== undefined ? { privacySettings: args.privacySettings } : {}),
-        ...(args.avatarStorageId !== undefined ? { avatarStorageId: args.avatarStorageId } : {}),
+        ...(args.notificationPreferences !== undefined
+          ? { notificationPreferences: args.notificationPreferences }
+          : {}),
+        ...(args.privacySettings !== undefined
+          ? { privacySettings: args.privacySettings }
+          : {}),
+        ...(args.avatarStorageId !== undefined
+          ? { avatarStorageId: args.avatarStorageId }
+          : {}),
         updatedAt: now,
       });
       return existing._id;
@@ -158,7 +171,9 @@ export const searchUsers = query({
 
       const username = user.username.toLowerCase();
       // Also search by name if available, but prioritize username display
-      const name = `${user.firstName || ''} ${user.lastName || ''}`.trim().toLowerCase();
+      const name = `${user.firstName || ''} ${user.lastName || ''}`
+        .trim()
+        .toLowerCase();
 
       return username.includes(lowerQuery) || name.includes(lowerQuery);
     });
@@ -202,20 +217,25 @@ export const findMoodMatch = query({
     // In production, this would use vector search or matching logic based on 'mood'
     const users = await ctx.db.query('users').collect();
     const candidates = users.filter(u => u._id !== currentUser._id);
-    
+
     if (candidates.length === 0) return null;
 
     const match = candidates[Math.floor(Math.random() * candidates.length)];
-    
+
     return {
       _id: match._id,
       username: match.username,
-      displayName: match.firstName && match.lastName ? `${match.firstName} ${match.lastName}` : match.firstName || match.username,
+      displayName:
+        match.firstName && match.lastName
+          ? `${match.firstName} ${match.lastName}`
+          : match.firstName || match.username,
       avatarUrl: match.avatarUrl,
-      mood: args.mood || "Mysterious", // Echo back the mood or a default
+      mood: args.mood || 'Mysterious', // Echo back the mood or a default
     };
   },
 });
+
+
 
 export const getUser = query({
   args: { id: v.id('users') },
@@ -224,6 +244,32 @@ export const getUser = query({
   },
 });
 
-export const generateUploadUrl = mutation(async (ctx) => {
+export const generateUploadUrl = mutation(async ctx => {
   return await ctx.storage.generateUploadUrl();
 });
+
+// Helper to ensure user exists (JIT creation)
+export async function ensureUserExists(ctx: MutationCtx, identity: UserIdentity) {
+  const user = await ctx.db
+    .query('users')
+    .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+    .unique();
+
+  if (user) return user._id;
+
+  // Create user if not found
+  const now = Date.now();
+  const newUserId = await ctx.db.insert('users', {
+    clerkId: identity.subject,
+    username: identity.nickname || identity.name || identity.email?.split('@')[0] || 'User',
+    email: identity.email || '',
+    firstName: identity.givenName,
+    lastName: identity.familyName,
+    avatarUrl: identity.pictureUrl,
+    createdAt: now,
+    updatedAt: now,
+    // Default role if needed, or leave optional
+  });
+
+  return newUserId;
+}
