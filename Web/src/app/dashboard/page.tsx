@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search, TrendingUp, Users, ArrowRight, Sparkles } from 'lucide-react';
+import Image from 'next/image';
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
@@ -158,7 +159,7 @@ function EntrepreneurDashboard() {
                 <div className="flex items-start justify-between mb-6">
                   <div className="w-14 h-14 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl flex items-center justify-center text-2xl font-bold text-indigo-400 border border-indigo-500/20">
                     {project.logoUrl ? (
-                      <img src={project.logoUrl} alt="" className="w-full h-full object-cover rounded-xl" />
+                      <Image src={project.logoUrl} alt="" width={56} height={56} className="object-cover rounded-xl" />
                     ) : (
                       project.title[0]
                     )}
@@ -211,7 +212,7 @@ function InvestorDashboard() {
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-slate-900 to-slate-900 group-hover:scale-105 transition-transform duration-700" />
                 <div className="absolute bottom-4 left-4 w-14 h-14 bg-slate-900/90 backdrop-blur-md rounded-xl border border-white/10 flex items-center justify-center text-2xl font-bold text-white shadow-xl">
                    {project.logoUrl ? (
-                      <img src={project.logoUrl} alt="" className="w-full h-full object-cover rounded-xl" />
+                      <Image src={project.logoUrl} alt="" width={56} height={56} className="object-cover rounded-xl" />
                     ) : (
                       project.title[0]
                     )}

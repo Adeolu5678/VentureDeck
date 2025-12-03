@@ -7,9 +7,32 @@ import { useState, useEffect } from 'react';
 import { TagInput } from '@/components/ui/TagInput';
 import { Toggle } from '@/components/ui/Toggle';
 import { User, Bell, Shield, Briefcase, Sparkles } from 'lucide-react';
+import Image from 'next/image';
+
+interface SettingsUser {
+  clerkId: string;
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  professionalBio?: string;
+  linkedinUrl?: string;
+  skills?: string[];
+  interests?: string[];
+  notificationPreferences?: { email: boolean; push: boolean };
+  privacySettings?: { profileVisibility: "public" | "private" };
+  avatarStorageId?: string;
+  avatarUrl?: string;
+}
+
+interface Certification {
+  _id: string;
+  title: string;
+  status: string;
+}
 
 export default function SettingsPage() {
-  const user = useQuery(api.users.getCurrentUser) as any;
+  const user = useQuery(api.users.getCurrentUser) as SettingsUser | undefined;
   const updateUser = useMutation(api.users.createOrUpdateUser);
   const generateUploadUrl = useMutation(api.users.generateUploadUrl);
   
@@ -22,7 +45,7 @@ export default function SettingsPage() {
   const [skills, setSkills] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
   const [notifications, setNotifications] = useState({ email: true, push: true });
-  const [privacy, setPrivacy] = useState({ profileVisibility: 'public' });
+  const [privacy, setPrivacy] = useState<{ profileVisibility: 'public' | 'private' }>({ profileVisibility: 'public' });
   const [avatarStorageId, setAvatarStorageId] = useState<string | undefined>(undefined);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
 
@@ -83,7 +106,7 @@ export default function SettingsPage() {
         notificationPreferences: notifications,
         privacySettings: privacy,
         avatarStorageId,
-      } as any);
+      });
       // Optional: Add toast notification here
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -140,9 +163,9 @@ export default function SettingsPage() {
                   
                   <div className="flex items-start gap-6 mb-8">
                     <div className="relative group">
-                      <div className="w-24 h-24 rounded-2xl overflow-hidden bg-slate-800 ring-2 ring-indigo-500/20 group-hover:ring-indigo-500/50 transition-all">
+                      <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-slate-800 ring-2 ring-indigo-500/20 group-hover:ring-indigo-500/50 transition-all">
                         {previewUrl ? (
-                          <img src={previewUrl} alt="Profile" className="w-full h-full object-cover" />
+                          <Image src={previewUrl} alt="Profile" fill className="object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-slate-500">
                             <User size={32} />
@@ -326,8 +349,8 @@ export default function SettingsPage() {
 
 function CertificationSection() {
   const generateUploadUrl = useMutation(api.users.generateUploadUrl);
-  const createCertification = useMutation((api as any).certifications.create);
-  const myCertifications = useQuery((api as any).certifications.list, {}) || [];
+  const createCertification = useMutation(api.certifications.create);
+  const myCertifications = useQuery(api.certifications.list, {}) || [];
   
   const [title, setTitle] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -409,7 +432,7 @@ function CertificationSection() {
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-slate-400">Your Certifications</h3>
             <div className="grid gap-3">
-              {myCertifications.map((cert: any) => (
+              {myCertifications.map((cert: Certification) => (
                 <div key={cert._id} className="flex items-center justify-between p-3 bg-slate-950 rounded-lg border border-slate-800">
                   <span className="font-medium text-slate-200">{cert.title}</span>
                   <span className={`text-xs px-2 py-1 rounded-full border ${

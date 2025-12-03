@@ -2,14 +2,44 @@
 
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
+import { Id } from '@convex/_generated/dataModel';
 import { useUser } from '@clerk/nextjs';
 import { useState } from 'react';
 import { Briefcase, Shield, User } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
+
+interface UserData {
+  _id: Id<"users">;
+  username?: string;
+  avatarUrl?: string;
+  role?: string;
+  professionalBio?: string;
+  linkedinUrl?: string;
+}
+
+interface Project {
+  _id: string;
+  title: string;
+  tagline: string;
+}
+
+interface Vouch {
+  _id: string;
+  voucherName: string;
+  relationship: string;
+  text: string;
+}
+
+interface Certification {
+  _id: string;
+  title: string;
+  status: string;
+}
 
 export default function ProfilePage() {
-  const { user, isLoaded } = useUser();
-  const convexUser = useQuery(api.users.getCurrentUser) as any;
+  const { isLoaded } = useUser();
+  const convexUser = useQuery(api.users.getCurrentUser) as UserData | undefined;
   const [activeTab, setActiveTab] = useState<'about' | 'portfolio' | 'reputation' | 'certifications'>('about');
 
   if (!isLoaded || !convexUser) return null;
@@ -19,9 +49,9 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="relative h-48 bg-gradient-to-r from-indigo-900 to-slate-900">
         <div className="absolute -bottom-12 left-6">
-          <div className="w-24 h-24 rounded-2xl bg-slate-800 border-4 border-slate-950 flex items-center justify-center text-3xl font-bold text-white overflow-hidden">
+          <div className="relative w-24 h-24 rounded-2xl bg-slate-800 border-4 border-slate-950 flex items-center justify-center text-3xl font-bold text-white overflow-hidden">
             {convexUser.avatarUrl ? (
-              <img src={convexUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              <Image src={convexUser.avatarUrl} alt="Avatar" fill className="object-cover" />
             ) : (
               convexUser.username?.[0].toUpperCase()
             )}
@@ -78,7 +108,7 @@ export default function ProfilePage() {
   );
 }
 
-function TabButton({ active, onClick, icon: Icon, label }: any) {
+function TabButton({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: React.ElementType; label: string }) {
   return (
     <button
       onClick={onClick}
@@ -95,7 +125,7 @@ function TabButton({ active, onClick, icon: Icon, label }: any) {
   );
 }
 
-function AboutTab({ user }: any) {
+function AboutTab({ user }: { user: UserData }) {
   return (
     <div className="space-y-6">
       <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
@@ -126,7 +156,7 @@ function PortfolioTab() {
 
   return (
     <div className="grid gap-4">
-      {projects.map((project: any) => (
+      {projects.map((project: Project) => (
         <Link key={project._id} href={`/projects/${project._id}`}>
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-indigo-500/50 transition-colors">
             <h3 className="font-semibold text-lg mb-1">{project.title}</h3>
@@ -138,7 +168,7 @@ function PortfolioTab() {
   );
 }
 
-function ReputationTab({ userId }: { userId: any }) {
+function ReputationTab({ userId }: { userId: Id<"users"> }) {
   const vouches = useQuery(api.vouches.list, { targetId: userId }) || [];
 
   if (vouches.length === 0) {
@@ -147,7 +177,7 @@ function ReputationTab({ userId }: { userId: any }) {
 
   return (
     <div className="space-y-4">
-      {vouches.map((vouch: any) => (
+      {vouches.map((vouch: Vouch) => (
         <div key={vouch._id} className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 bg-indigo-900 rounded-full flex items-center justify-center text-xs font-bold">
@@ -158,15 +188,15 @@ function ReputationTab({ userId }: { userId: any }) {
               <div className="text-xs text-slate-500">{vouch.relationship}</div>
             </div>
           </div>
-          <p className="text-slate-300 text-sm italic">"{vouch.text}"</p>
+          <p className="text-slate-300 text-sm italic">&quot;{vouch.text}&quot;</p>
         </div>
       ))}
     </div>
   );
 }
 
-function CertificationsTab({ userId }: { userId: any }) {
-  const certifications = useQuery((api as any).certifications.list, { targetId: userId }) || [];
+function CertificationsTab({ userId }: { userId: Id<"users"> }) {
+  const certifications = useQuery(api.certifications.list, { targetId: userId }) || [];
 
   if (certifications.length === 0) {
     return <div className="text-slate-400 text-center py-12">No certifications yet.</div>;
@@ -174,7 +204,7 @@ function CertificationsTab({ userId }: { userId: any }) {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {certifications.map((cert: any) => (
+      {certifications.map((cert: Certification) => (
         <div key={cert._id} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
            {/* In a real app, we'd fetch the image URL properly if it's a storage ID */}
           <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center shrink-0">
