@@ -22,7 +22,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} antialiased`} suppressHydrationWarning>
         <ConvexClientProvider>
-          <div className="min-h-screen bg-background text-foreground pb-20 selection:bg-primary/30 selection:text-primary-foreground">
+          <div className="relative min-h-screen bg-background text-foreground pb-20 selection:bg-primary/30 selection:text-primary-foreground overflow-x-hidden">
+            {/* Global Background Effects */}
+            <div className="fixed inset-0 z-[-1] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950 pointer-events-none" />
+            <div className="fixed inset-0 z-[-1] bg-[url('/noise.png')] opacity-[0.03] pointer-events-none mix-blend-overlay" />
+            
             <TopNav />
             <Breadcrumbs />
             {children}

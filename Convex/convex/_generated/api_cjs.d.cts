@@ -10,16 +10,19 @@
 
 import type * as applications from "../applications.js";
 import type * as bounties from "../bounties.js";
+import type * as certifications from "../certifications.js";
 import type * as conversations from "../conversations.js";
 import type * as featureFlags from "../featureFlags.js";
 import type * as fileStorage from "../fileStorage.js";
 import type * as friends from "../friends.js";
+import type * as messages from "../messages.js";
 import type * as milestones from "../milestones.js";
 import type * as projects from "../projects.js";
 import type * as soft_circles from "../soft_circles.js";
 import type * as users from "../users.js";
 import type * as vouches from "../vouches.js";
 import type * as webhooks from "../webhooks.js";
+import type * as workspaces from "../workspaces.js";
 
 import type {
   ApiFromModules,
@@ -30,16 +33,19 @@ import type {
 declare const fullApi: ApiFromModules<{
   applications: typeof applications;
   bounties: typeof bounties;
+  certifications: typeof certifications;
   conversations: typeof conversations;
   featureFlags: typeof featureFlags;
   fileStorage: typeof fileStorage;
   friends: typeof friends;
+  messages: typeof messages;
   milestones: typeof milestones;
   projects: typeof projects;
   soft_circles: typeof soft_circles;
   users: typeof users;
   vouches: typeof vouches;
   webhooks: typeof webhooks;
+  workspaces: typeof workspaces;
 }>;
 
 /**
