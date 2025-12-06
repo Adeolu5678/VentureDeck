@@ -6,13 +6,39 @@ import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageSquare, Briefcase, User, ArrowLeft, Sparkles } from 'lucide-react';
-import { Id } from '@convex/_generated/dataModel';
 
 export default function ConversationsPage() {
   const { user } = useUser();
   const conversations = useQuery(api.conversations.list);
 
   if (!user) return null;
+
+  // Group conversations
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const interviewGroups: Record<string, any[]> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const investorGroups: Record<string, any[]> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const workspaceGroups: Record<string, any[]> = {};
+
+  conversations?.forEach(c => {
+    if (c.type === 'interview') {
+      const key = c.projectTitle || 'Other Interviews';
+      if (!interviewGroups[key]) interviewGroups[key] = [];
+      interviewGroups[key].push(c);
+    } else if (c.type === 'direct') {
+      // Group by Project for Investors/Founders
+      // If no project linked, put in "Direct Messages"
+      const key = c.projectTitle || 'Direct Messages';
+      if (!investorGroups[key]) investorGroups[key] = [];
+      investorGroups[key].push(c);
+    } else {
+      // Workspace chats
+      const key = c.workspaceName || 'Other Workspaces';
+      if (!workspaceGroups[key]) workspaceGroups[key] = [];
+      workspaceGroups[key].push(c);
+    }
+  });
 
   return (
     <div className="min-h-screen bg-slate-950 text-white pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
@@ -35,38 +61,98 @@ export default function ConversationsPage() {
           </div>
         </header>
 
-        <main className="bg-slate-900/30 border border-slate-800 rounded-2xl overflow-hidden p-1">
-            <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 min-h-[400px] space-y-4">
-                {conversations === undefined ? (
-                    <div className="text-center py-10 text-slate-500">Loading conversations...</div>
-                ) : conversations.length === 0 ? (
-                    <div className="text-center py-10">
-                        <MessageSquare className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-white">No conversations yet</h3>
-                        <p className="text-slate-500">Start a project or contact a founder to begin.</p>
-                    </div>
-                ) : (
-                    conversations.map((conversation) => (
-                        <ConversationCard 
-                            key={conversation._id} 
-                            conversation={conversation} 
-                            currentUserId={user.id as Id<'users'>} // Note: Clerk ID vs Convex ID might be tricky here if we need strict typing, but for display logic it's mostly about 'other' participant
-                        />
-                    ))
-                )}
-            </div>
+        <main className="space-y-8">
+            {conversations === undefined ? (
+                <div className="text-center py-10 text-slate-500">Loading conversations...</div>
+            ) : conversations.length === 0 ? (
+                <div className="text-center py-10 bg-slate-900/30 border border-slate-800 rounded-2xl">
+                    <MessageSquare className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-white">No conversations yet</h3>
+                    <p className="text-slate-500">Start a project or contact a founder to begin.</p>
+                </div>
+            ) : (
+                <>
+                    {/* Interviews Section */}
+                    {Object.keys(interviewGroups).length > 0 && (
+                        <section>
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <Briefcase className="w-5 h-5 text-emerald-400" />
+                                Interviews
+                            </h2>
+                            <div className="space-y-6">
+                                {Object.entries(interviewGroups).map(([projectTitle, convs]) => (
+                                    <div key={projectTitle} className="bg-slate-900/30 border border-slate-800 rounded-xl overflow-hidden">
+                                        <div className="bg-slate-900/50 px-4 py-2 border-b border-slate-800 font-medium text-slate-300">
+                                            {projectTitle}
+                                        </div>
+                                        <div className="p-2 space-y-2">
+                                            {convs.map(c => (
+                                                <ConversationCard key={c._id} conversation={c} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Investors Section */}
+                    {Object.keys(investorGroups).length > 0 && (
+                        <section>
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <User className="w-5 h-5 text-blue-400" />
+                                Investors & Direct Messages
+                            </h2>
+                            <div className="space-y-6">
+                                {Object.entries(investorGroups).map(([projectTitle, convs]) => (
+                                    <div key={projectTitle} className="bg-slate-900/30 border border-slate-800 rounded-xl overflow-hidden">
+                                        <div className="bg-slate-900/50 px-4 py-2 border-b border-slate-800 font-medium text-slate-300">
+                                            {projectTitle}
+                                        </div>
+                                        <div className="p-2 space-y-2">
+                                            {convs.map(c => (
+                                                <ConversationCard key={c._id} conversation={c} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Workspaces Section */}
+                    {Object.keys(workspaceGroups).length > 0 && (
+                        <section>
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <MessageSquare className="w-5 h-5 text-indigo-400" />
+                                Workspaces
+                            </h2>
+                            <div className="space-y-6">
+                                {Object.entries(workspaceGroups).map(([workspaceName, convs]) => (
+                                    <div key={workspaceName} className="bg-slate-900/30 border border-slate-800 rounded-xl overflow-hidden">
+                                        <div className="bg-slate-900/50 px-4 py-2 border-b border-slate-800 font-medium text-slate-300">
+                                            {workspaceName}
+                                        </div>
+                                        <div className="p-2 space-y-2">
+                                            {convs.map(c => (
+                                                <ConversationCard key={c._id} conversation={c} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+                </>
+            )}
         </main>
       </div>
     </div>
   );
 }
 
-function ConversationCard({ conversation, currentUserId }: { conversation: any, currentUserId: string }) {
-    // We need to find the other participant. 
-    // Since we don't have the full user object here easily without more queries or data, 
-    // we'll rely on the type logic or just show generic info for now if names aren't populated.
-    // The legacy code assumed we had IDs.
-    
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ConversationCard({ conversation }: { conversation: any }) {
     const typeConfig = {
         direct: {
           label: 'Direct Message',
@@ -95,28 +181,44 @@ function ConversationCard({ conversation, currentUserId }: { conversation: any, 
     
       const Icon = typeConfig.icon;
 
+      // Determine Display Name based on context
+      let displayName = conversation.name || 'Chat';
+      let subText = '';
+
+      if (conversation.type === 'interview') {
+          // For interview: "Applicant Name - Role" (if founder) or "Project Name - Role" (if applicant)
+          // We have enriched data: projectRole ('Investor' or 'Founder'), applicationRole, otherUserName
+          if (conversation.projectRole === 'Founder') {
+               displayName = `${conversation.otherUserName || 'Applicant'} - ${conversation.applicationRole || 'Candidate'}`;
+          } else {
+               displayName = `${conversation.projectTitle || 'Project'} - ${conversation.applicationRole || 'Candidate'}`;
+          }
+      } else if (conversation.type === 'direct') {
+          // For DM: "Other User Name"
+          displayName = conversation.otherUserName || 'Direct Message';
+          subText = conversation.otherUserRole || '';
+      } else if (conversation.type === 'workspace_general') {
+          displayName = 'General Chat';
+      }
+
     return (
         <Link href={`/conversations/${conversation._id}`} className="block w-full">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-indigo-500/50 transition-colors">
-                <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${typeConfig.bg} ${typeConfig.color}`}>
-                            <Icon className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="font-medium text-white">
-                                {conversation.type === 'workspace_general' ? 'Team Chat' : 
-                                 conversation.type === 'interview' ? 'Interview' : 
-                                 'Direct Message'}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                {formatDistanceToNow(new Date(conversation.updatedAt), { addSuffix: true })}
-                            </p>
-                        </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 hover:border-indigo-500/50 transition-colors flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${typeConfig.bg} ${typeConfig.color} shrink-0`}>
+                    <Icon className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline">
+                        <p className="font-medium text-white truncate">
+                            {displayName}
+                        </p>
+                        <span className="text-[10px] text-slate-500 shrink-0 ml-2">
+                            {formatDistanceToNow(new Date(conversation.updatedAt), { addSuffix: true })}
+                        </span>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full ${typeConfig.bg} ${typeConfig.color}`}>
-                        {typeConfig.label}
-                    </span>
+                    {subText && (
+                        <p className="text-xs text-slate-500 truncate">{subText}</p>
+                    )}
                 </div>
             </div>
         </Link>

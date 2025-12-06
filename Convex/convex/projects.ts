@@ -51,6 +51,18 @@ export const create = mutation({
     // Link the workspace back to the project
     await ctx.db.patch(projectId, { workspaceId });
 
+    // Create default 'General' chatroom
+    await ctx.db.insert('conversations', {
+      workspaceId,
+      type: 'workspace_general',
+      name: 'General',
+      visibility: 'public',
+      participantIds: [userId],
+      creatorId: userId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
     return projectId;
   },
 });
@@ -114,6 +126,43 @@ export const getUserProjects = query({
       .query('projects')
       .withIndex('by_owner', (q) => q.eq('ownerId', args.userId))
       .collect();
+  },
+});
+
+// Get projects where the current user is a member (but not the owner)
+export const getProjectsIAmMemberOf = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!user) return [];
+
+    // 1. Find all workspaces where user is a member
+    // Note: This is a scan on workspaces, which is fine for now as workspaces are 1:1 with projects
+    // Ideally we'd have an index on members, but Convex handles array indexes differently.
+    // For MVP, filtering in memory or scanning is acceptable.
+    const allWorkspaces = await ctx.db.query('workspaces').collect();
+    const myWorkspaces = allWorkspaces.filter(w => w.members.includes(user._id));
+
+    // 2. Fetch the projects for these workspaces
+    const projects = [];
+    for (const workspace of myWorkspaces) {
+      if (workspace.projectId) {
+        const project = await ctx.db.get(workspace.projectId);
+        // Exclude projects I own (already shown in "My Projects")
+        if (project && project.ownerId !== user._id) {
+          projects.push(project);
+        }
+      }
+    }
+
+    return projects;
   },
 });
 

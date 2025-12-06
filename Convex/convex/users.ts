@@ -30,96 +30,6 @@ export const getCurrentUser = query({
   },
 });
 
-// Create or update user from Clerk webhook
-export const createOrUpdateUser = mutation({
-  args: {
-    clerkId: v.string(),
-    username: v.string(),
-    email: v.string(),
-    firstName: v.optional(v.string()),
-    lastName: v.optional(v.string()),
-    avatarUrl: v.optional(v.string()),
-    // Launchpad Fields
-    role: v.optional(v.union(v.literal('entrepreneur'), v.literal('investor'))),
-    professionalBio: v.optional(v.string()),
-    linkedinUrl: v.optional(v.string()),
-    skills: v.optional(v.array(v.string())),
-    interests: v.optional(v.array(v.string())),
-    notificationPreferences: v.optional(
-      v.object({
-        email: v.boolean(),
-        push: v.boolean(),
-      })
-    ),
-    privacySettings: v.optional(
-      v.object({
-        profileVisibility: v.union(v.literal('public'), v.literal('private')),
-      })
-    ),
-    avatarStorageId: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkId))
-      .unique();
-
-    const now = Date.now();
-
-    if (existing) {
-      // Update existing user
-      await ctx.db.patch(existing._id, {
-        username: args.username,
-        email: args.email,
-        firstName: args.firstName,
-        lastName: args.lastName,
-        avatarUrl: args.avatarUrl,
-        professionalBio: args.professionalBio,
-        linkedinUrl: args.linkedinUrl,
-        // Only update role if it's not set (or allow switching? For now, assume sticky role)
-        ...(args.role !== undefined && !existing.role
-          ? { role: args.role }
-          : {}),
-        ...(args.skills !== undefined ? { skills: args.skills } : {}),
-        ...(args.interests !== undefined ? { interests: args.interests } : {}),
-        ...(args.notificationPreferences !== undefined
-          ? { notificationPreferences: args.notificationPreferences }
-          : {}),
-        ...(args.privacySettings !== undefined
-          ? { privacySettings: args.privacySettings }
-          : {}),
-        ...(args.avatarStorageId !== undefined
-          ? { avatarStorageId: args.avatarStorageId }
-          : {}),
-        updatedAt: now,
-      });
-      return existing._id;
-    } else {
-      // Create new user
-      return await ctx.db.insert('users', {
-        clerkId: args.clerkId,
-        username: args.username,
-        email: args.email,
-        firstName: args.firstName,
-        lastName: args.lastName,
-        avatarUrl: args.avatarUrl,
-        professionalBio: args.professionalBio,
-        linkedinUrl: args.linkedinUrl,
-        skills: args.skills,
-        interests: args.interests,
-        notificationPreferences: args.notificationPreferences,
-        privacySettings: args.privacySettings,
-        avatarStorageId: args.avatarStorageId,
-        role: args.role, // Role might be null initially if not selected during signup flow
-        createdAt: now,
-        updatedAt: now,
-        // Legacy field default
-        needsUsernameSelection: false,
-      });
-    }
-  },
-});
-
 // Get user by Clerk ID
 export const getUserByClerkId = query({
   args: { clerkId: v.string() },
@@ -145,7 +55,27 @@ export const setRole = mutation({
 
     if (!user) throw new Error('User not found');
 
-    await ctx.db.patch(user._id, { role: args.role });
+  await ctx.db.patch(user._id, { role: args.role });
+  },
+});
+
+// Set admin status (Internal/Dev tool - Secured)
+export const setAdmin = mutation({
+  args: { 
+    userId: v.id('users'), 
+    isAdmin: v.boolean(),
+    secret: v.string() 
+  },
+  handler: async (ctx, args) => {
+    // Simple secret key protection for MVP
+    // In production, this should be an environment variable or a more robust auth check
+    const ADMIN_SECRET = "venture-deck-admin-2025";
+    
+    if (args.secret !== ADMIN_SECRET) {
+      throw new Error("Invalid admin secret");
+    }
+
+    await ctx.db.patch(args.userId, { isAdmin: args.isAdmin });
   },
 });
 
@@ -273,3 +203,98 @@ export async function ensureUserExists(ctx: MutationCtx, identity: UserIdentity)
 
   return newUserId;
 }
+
+export const createOrUpdateUser = mutation({
+  args: {
+    clerkId: v.string(),
+    username: v.string(),
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+    // Launchpad Fields
+    role: v.optional(v.union(v.literal('entrepreneur'), v.literal('investor'))),
+    professionalBio: v.optional(v.string()),
+    linkedinUrl: v.optional(v.string()),
+    githubUrl: v.optional(v.string()),
+    skills: v.optional(v.array(v.string())),
+    interests: v.optional(v.array(v.string())),
+    notificationPreferences: v.optional(
+      v.object({
+        email: v.boolean(),
+        push: v.boolean(),
+      })
+    ),
+    privacySettings: v.optional(
+      v.object({
+        profileVisibility: v.union(v.literal('public'), v.literal('private')),
+      })
+    ),
+    avatarStorageId: v.optional(v.string()),
+    displayName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkId))
+      .unique();
+
+    const now = Date.now();
+
+    if (existing) {
+      // Update existing user
+      await ctx.db.patch(existing._id, {
+        username: args.username,
+        email: args.email,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        avatarUrl: args.avatarUrl,
+        professionalBio: args.professionalBio,
+        linkedinUrl: args.linkedinUrl,
+        githubUrl: args.githubUrl,
+        displayName: args.displayName,
+        // Only update role if it's not set (or allow switching? For now, assume sticky role)
+        ...(args.role !== undefined && !existing.role
+          ? { role: args.role }
+          : {}),
+        ...(args.skills !== undefined ? { skills: args.skills } : {}),
+        ...(args.interests !== undefined ? { interests: args.interests } : {}),
+        ...(args.notificationPreferences !== undefined
+          ? { notificationPreferences: args.notificationPreferences }
+          : {}),
+        ...(args.privacySettings !== undefined
+          ? { privacySettings: args.privacySettings }
+          : {}),
+        ...(args.avatarStorageId !== undefined
+          ? { avatarStorageId: args.avatarStorageId }
+          : {}),
+        updatedAt: now,
+      });
+      return existing._id;
+    } else {
+      // Create new user
+      return await ctx.db.insert('users', {
+        clerkId: args.clerkId,
+        username: args.username,
+        email: args.email,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        avatarUrl: args.avatarUrl,
+        professionalBio: args.professionalBio,
+        linkedinUrl: args.linkedinUrl,
+        githubUrl: args.githubUrl,
+        skills: args.skills,
+        interests: args.interests,
+        notificationPreferences: args.notificationPreferences,
+        privacySettings: args.privacySettings,
+        avatarStorageId: args.avatarStorageId,
+        displayName: args.displayName,
+        role: args.role, // Role might be null initially if not selected during signup flow
+        createdAt: now,
+        updatedAt: now,
+        // Legacy field default
+        needsUsernameSelection: false,
+      });
+    }
+  },
+});

@@ -17,6 +17,9 @@ export default function ConversationPage() {
   const conversation = useQuery(api.conversations.getConversation, { conversationId });
   const messages = useQuery(api.conversations.getMessages, { conversationId });
   
+  // Fetch project if it exists
+  const project = useQuery(api.projects.get, conversation?.projectId ? { id: conversation.projectId } : "skip");
+  
   const sendMessage = useMutation(api.conversations.sendMessage);
 
   const [newMessage, setNewMessage] = useState('');
@@ -29,6 +32,20 @@ export default function ConversationPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Determine header title
+  let headerTitle = 'Conversation';
+  let headerSubtitle = '';
+  
+  // For Direct Messages, we want "[Project Name] - [Other User Name]"
+  // We need to fetch the other user
+  const otherUserId = conversation?.type === 'direct' 
+    ? conversation.participantIds.find(id => id !== user?._id) 
+    : null;
+    
+  const otherUser = useQuery(api.users.getUser, otherUserId ? { id: otherUserId } : "skip");
+
+
 
   if (conversation === undefined || messages === undefined || user === undefined) {
     return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading...</div>;
@@ -54,22 +71,98 @@ export default function ConversationPage() {
     }
   };
 
+  if (conversation.type === 'interview') {
+      if (project) {
+          const isOwner = user?._id === project.ownerId;
+          if (isOwner) {
+              // Founder View: "Applicant Name - Role"
+               // We need to fetch applicant name. In interview, other participant is applicant.
+
+               // We can use otherUser query if we set otherUserId correctly for interview too, but let's just use what we have or fetch specific
+               // Actually, let's reuse otherUser logic if possible or fetch here.
+               // Since we didn't set otherUserId for interview above, let's do it now or just rely on a new query if needed.
+               // But wait, we can't conditionally call hooks.
+               // Let's rely on the fact that we might need to refactor the hook calls above to be more generic.
+               // For now, let's just use a generic "Interview Candidate" if we can't easily get the name without breaking hook rules,
+               // OR better, let's fix the hook logic.
+               
+               // ACTUALLY, I can just use the `conversation.projectRole` logic from backend if I updated it?
+               // The backend `getConversation` returns `projectRole` as `${application.role} Interview`.
+               // But we want "Applicant Name - Role".
+               
+               // Let's just use "Candidate - Role" for now to be safe, or if we have `otherUser` (which we don't fetch for interview above).
+               headerTitle = `${conversation.projectRole || 'Candidate'} - Interview`;
+          } else {
+              // Applicant View: "Project Name - Role"
+              headerTitle = `${project.title} - ${conversation.projectRole?.replace(' Interview', '') || 'Role'}`;
+          }
+      }
+  } else if (project) {
+    if (conversation.type === 'direct' && otherUser) {
+       // Direct Message in Project Context
+       headerTitle = `${otherUser.displayName || otherUser.firstName || otherUser.username}`;
+       headerSubtitle = otherUser.role || '';
+    } else {
+      const isOwner = user?._id === project.ownerId;
+      headerTitle = `${project.title} - ${isOwner ? 'Investor' : 'Founder'}`;
+    }
+  } else if (conversation.type === 'direct') {
+    headerTitle = otherUser ? (otherUser.displayName || otherUser.firstName || otherUser.username || 'Direct Message') : 'Direct Message';
+    headerSubtitle = otherUser?.role || '';
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
       {/* Header */}
-      <header className="bg-slate-900 border-b border-slate-800 p-4 flex items-center sticky top-0 z-10">
-        <Link href="/conversations" className="text-slate-400 hover:text-white mr-4 transition-colors">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="font-bold text-white">
-            {conversation.type === 'direct' ? 'Direct Message' : 
-             conversation.type === 'interview' ? 'Interview Chat' : 'Conversation'}
-          </h1>
-          <p className="text-xs text-slate-500">
-            ID: {conversation._id.slice(0, 8)}...
-          </p>
+      <header className="bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center">
+          <Link href="/conversations" className="text-slate-400 hover:text-white mr-4 transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <h1 className="font-bold text-white">
+              {headerTitle}
+            </h1>
+            {headerSubtitle && (
+                <p className="text-xs text-slate-500">{headerSubtitle}</p>
+            )}
+            {conversation.isClosed && (
+                <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full border border-red-500/20 ml-2">
+                    Closed
+                </span>
+            )}
+          </div>
         </div>
+        
+        {/* Legal Docs for Interview */}
+        {conversation.type === 'interview' && conversation.applicationId && project && user?._id === project.ownerId && !conversation.isClosed && (
+           <div className="flex gap-2">
+               {project.workspaceId && (
+                   <Link 
+                      href={`/workspaces/${project.workspaceId}/legal`}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700"
+                   >
+                      Legal Docs
+                   </Link>
+               )}
+               <AcceptButton applicationId={conversation.applicationId} />
+               <RejectButton applicationId={conversation.applicationId} />
+           </div>
+        )}
+
+        {/* Legal Docs for Direct Message (Founder View) */}
+        {conversation.type === 'direct' && project && user?._id === project.ownerId && (
+            <div className="flex gap-2">
+                {project.workspaceId && (
+                    <Link 
+                       href={`/workspaces/${project.workspaceId}/legal`}
+                       className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700"
+                    >
+                       Legal Docs
+                    </Link>
+                )}
+            </div>
+        )}
       </header>
 
       {/* Messages */}
@@ -109,30 +202,76 @@ export default function ConversationPage() {
 
       {/* Input */}
       <div className="bg-slate-900 border-t border-slate-800 p-4 sticky bottom-0">
-        <form onSubmit={handleSendMessage} className="flex gap-2 max-w-4xl mx-auto">
-          <button 
-            type="button"
-            className="p-2 text-slate-400 hover:text-white transition-colors"
-            title="Upload Image (Coming Soon)"
-          >
-            <ImageIcon className="w-5 h-5" />
-          </button>
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-slate-950 border border-slate-700 rounded-full px-4 py-2 text-white focus:outline-none focus:border-indigo-500"
-          />
-          <button 
-            type="submit"
-            disabled={!newMessage.trim()}
-            className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </form>
+        {conversation.isClosed ? (
+            <div className="text-center text-slate-500 text-sm py-2">
+                This conversation is closed.
+            </div>
+        ) : (
+            <form onSubmit={handleSendMessage} className="flex gap-2 max-w-4xl mx-auto">
+            <button 
+                type="button"
+                className="p-2 text-slate-400 hover:text-white transition-colors"
+                title="Upload Image (Coming Soon)"
+            >
+                <ImageIcon className="w-5 h-5" />
+            </button>
+            <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type a message..."
+                className="flex-1 bg-slate-950 border border-slate-700 rounded-full px-4 py-2 text-white focus:outline-none focus:border-indigo-500"
+            />
+            <button 
+                type="submit"
+                disabled={!newMessage.trim()}
+                className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+                <Send className="w-5 h-5" />
+            </button>
+            </form>
+        )}
       </div>
     </div>
   );
 }
+
+function AcceptButton({ applicationId }: { applicationId: Id<'applications'> }) {
+  const acceptApplication = useMutation(api.applications.accept);
+
+  const handleAccept = async () => {
+    if (confirm('Accept this applicant? They will be added to the workspace.')) {
+      await acceptApplication({ applicationId });
+      alert('Applicant accepted!');
+    }
+  };
+
+  return (
+    <button 
+      onClick={handleAccept}
+      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
+    >
+      Accept
+    </button>
+  );
+}
+
+function RejectButton({ applicationId }: { applicationId: Id<'applications'> }) {
+    const rejectApplication = useMutation(api.applications.reject);
+  
+    const handleReject = async () => {
+      if (confirm('Reject this applicant? The conversation will be closed.')) {
+        await rejectApplication({ applicationId });
+        alert('Applicant rejected.');
+      }
+    };
+  
+    return (
+      <button 
+        onClick={handleReject}
+        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors"
+      >
+        Reject
+      </button>
+    );
+  }

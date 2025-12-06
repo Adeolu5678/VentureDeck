@@ -13,9 +13,12 @@ export default defineSchema({
     
     // Launchpad Specific Fields
     role: v.optional(v.union(v.literal('entrepreneur'), v.literal('investor'))),
+    displayName: v.optional(v.string()),
     professionalBio: v.optional(v.string()),
     linkedinUrl: v.optional(v.string()),
+    githubUrl: v.optional(v.string()),
     isVerified: v.optional(v.boolean()),
+    isAdmin: v.optional(v.boolean()),
 
     // Profile & Settings
     skills: v.optional(v.array(v.string())),
@@ -26,6 +29,11 @@ export default defineSchema({
     })),
     privacySettings: v.optional(v.object({
       profileVisibility: v.union(v.literal('public'), v.literal('private')),
+    })),
+    tags: v.optional(v.array(v.string())),
+    investmentRange: v.optional(v.object({
+      min: v.number(),
+      max: v.number(),
     })),
     avatarStorageId: v.optional(v.string()),
     
@@ -59,6 +67,7 @@ export default defineSchema({
     tagline: v.string(),
     description: v.string(),
     industry: v.string(),
+    tags: v.optional(v.array(v.string())),
     fundingGoal: v.number(),
     equityOffered: v.number(),
     status: v.union(v.literal('draft'), v.literal('published'), v.literal('funded'), v.literal('closed')),
@@ -77,6 +86,8 @@ export default defineSchema({
     projectId: v.id('projects'),
     name: v.string(),
     members: v.array(v.id('users')),
+    roles: v.optional(v.array(v.object({ userId: v.id('users'), role: v.string() }))),
+    inviteCode: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -100,8 +111,14 @@ export default defineSchema({
   conversations: defineTable({
     participantIds: v.array(v.id('users')),
     workspaceId: v.optional(v.id('workspaces')),
+    projectId: v.optional(v.id('projects')),
     applicationId: v.optional(v.id('applications')),
-    type: v.optional(v.union(v.literal('direct'), v.literal('workspace_general'), v.literal('interview'))),
+    type: v.optional(v.union(v.literal('direct'), v.literal('workspace_general'), v.literal('interview'), v.literal('custom_chat'))),
+    name: v.optional(v.string()),
+    visibility: v.optional(v.union(v.literal('public'), v.literal('private'))),
+    isClosed: v.optional(v.boolean()),
+    creatorId: v.optional(v.id('users')),
+    archivedBy: v.optional(v.array(v.id('users'))),
     lastMessageId: v.optional(v.id('messages')),
     // Legacy fields
     status: v.optional(v.string()),
@@ -156,6 +173,7 @@ export default defineSchema({
     amount: v.number(),
     status: v.union(v.literal('interested'), v.literal('committed'), v.literal('withdrawn')),
     createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
   })
     .index('by_project', ['projectId'])
     .index('by_investor', ['investorId']),
@@ -193,4 +211,29 @@ export default defineSchema({
     .index('by_user_friend', ['userId', 'friendId'])
     .index('by_user_status', ['userId', 'status'])
     .index('by_friend_status', ['friendId', 'status']),
+
+  // Legal Documents table
+  legalDocs: defineTable({
+    projectId: v.id('projects'),
+    type: v.union(v.literal('SAFE'), v.literal('NDA')),
+    status: v.union(v.literal('draft'), v.literal('signed')),
+    storageId: v.string(), // ID of the stored PDF file
+    createdAt: v.number(),
+    signedAt: v.optional(v.number()),
+    signerId: v.optional(v.id('users')),
+  })
+    .index('by_project', ['projectId']),
+
+  // Notifications table
+  notifications: defineTable({
+    userId: v.id('users'), // Recipient
+    type: v.union(v.literal('application_received'), v.literal('application_accepted'), v.literal('application_rejected'), v.literal('message_received'), v.literal('soft_circle_committed'), v.literal('system')),
+    title: v.string(),
+    message: v.string(),
+    link: v.optional(v.string()), // URL to redirect to
+    read: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_read', ['userId', 'read']),
 });

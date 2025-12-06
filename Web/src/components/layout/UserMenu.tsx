@@ -3,7 +3,7 @@
 import { useAuth, useUser, SignOutButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
-import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, Bell } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 
@@ -74,6 +74,15 @@ export function UserMenu() {
           >
             <User className="w-4 h-4" />
             Profile
+          </Link>
+
+          <Link
+            href="/notifications"
+            className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+            onClick={() => setIsOpen(false)}
+          >
+            <Bell className="w-4 h-4" />
+            Notifications
           </Link>
           
           <Link

@@ -5,7 +5,7 @@ import { api } from '@convex/_generated/api';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Id } from '@convex/_generated/dataModel';
-import { DollarSign, PieChart, TrendingUp } from 'lucide-react';
+import { DollarSign } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SoftCirclesPage() {
@@ -17,8 +17,15 @@ export default function SoftCirclesPage() {
   const commitments = useQuery(api.soft_circles.get, { projectId }) || [];
   const commit = useMutation(api.soft_circles.commit);
 
-  const [amount, setAmount] = useState('');
+  const myCommitment = commitments?.find((c: any) => c.investorId === user?._id);
+
+  const [amount, setAmount] = useState(myCommitment ? myCommitment.amount.toString() : '');
   const [committed, setCommitted] = useState(false);
+
+  // Update local state if myCommitment loads later
+  if (myCommitment && amount === '' && !committed) {
+      setAmount(myCommitment.amount.toString());
+  }
 
   if (!project || !user) return null;
 
@@ -71,11 +78,15 @@ export default function SoftCirclesPage() {
         </div>
 
         {/* Investor Action */}
-        {isInvestor && !committed && (
+        {isInvestor && (
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 mb-8">
-            <h2 className="text-xl font-bold mb-4">Express Interest</h2>
+            <h2 className="text-xl font-bold mb-4">
+              {myCommitment ? 'Edit Your Commitment' : 'Express Interest'}
+            </h2>
             <p className="text-slate-400 mb-6">
-              Indicate your interest in this round. This is non-binding but helps the founder gauge demand.
+              {myCommitment 
+                ? 'You have already expressed interest. You can update your committed amount below.' 
+                : 'Indicate your interest in this round. This is non-binding but helps the founder gauge demand.'}
             </p>
             <form onSubmit={handleCommit} className="flex gap-4">
               <div className="relative flex-1">
@@ -93,7 +104,7 @@ export default function SoftCirclesPage() {
                 type="submit"
                 className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg font-medium transition-colors"
               >
-                Commit
+                {myCommitment ? 'Update' : 'Commit'}
               </button>
             </form>
           </div>

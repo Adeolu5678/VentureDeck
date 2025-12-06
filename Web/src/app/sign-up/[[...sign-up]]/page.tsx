@@ -6,7 +6,7 @@ export default function Page() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 relative overflow-hidden selection:bg-indigo-500/30">
       {/* Background Effects */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950 pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] pointer-events-none mix-blend-overlay" />
+
 
       <div className="z-10 flex flex-col items-center gap-8 w-full max-w-md px-4 my-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <Link href="/" className="flex items-center gap-3 group">

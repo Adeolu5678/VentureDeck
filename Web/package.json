@@ -11,13 +11,17 @@
   "dependencies": {
     "@clerk/clerk-sdk-node": "^5.1.6",
     "@clerk/nextjs": "^6.35.5",
+    "@radix-ui/react-label": "^2.1.8",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.29.3",
     "date-fns": "^4.1.0",
+    "jspdf": "^3.0.4",
     "lucide-react": "^0.555.0",
     "next": "16.0.6",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "sonner": "^2.0.7",
     "svix": "^1.81.0",
     "tailwind-merge": "^3.4.0"
   },
