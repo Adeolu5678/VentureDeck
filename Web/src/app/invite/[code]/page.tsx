@@ -34,26 +34,26 @@ export default function InvitePage() {
 
   if (workspace === undefined) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      <div className="min-h-screen bg-background flex items-center justify-center text-white">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (workspace === null) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white p-4">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
-          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <XCircle className="w-8 h-8 text-red-500" />
+      <div className="min-h-screen bg-background flex items-center justify-center text-white p-4">
+        <div className="max-w-md w-full bg-muted border border-border rounded-2xl p-8 text-center">
+          <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <XCircle className="w-8 h-8 text-destructive" />
           </div>
           <h1 className="text-2xl font-bold mb-2">Invalid Invite Link</h1>
-          <p className="text-slate-400 mb-6">
+          <p className="text-muted-foreground mb-6">
             This invite link is invalid or has expired. Please ask the workspace owner for a new link.
           </p>
           <button 
             onClick={() => router.push('/dashboard')}
-            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition-colors"
+            className="w-full py-3 bg-muted hover:bg-muted/80 text-white rounded-xl font-medium transition-colors"
           >
             Go to Dashboard
           </button>
@@ -63,20 +63,20 @@ export default function InvitePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex items-center justify-center text-white p-4 relative overflow-hidden">
       {/* Background Elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[100px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[100px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[100px]" />
       </div>
 
-      <div className="max-w-md w-full bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 text-center shadow-2xl relative z-10">
-        <div className="w-20 h-20 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 rotate-3">
-          <span className="text-3xl font-bold text-indigo-500">{workspace.name.charAt(0).toUpperCase()}</span>
+      <div className="max-w-md w-full bg-muted/50 backdrop-blur-xl border border-border rounded-2xl p-8 text-center shadow-2xl relative z-10">
+        <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 rotate-3">
+          <span className="text-3xl font-bold text-primary">{workspace.name.charAt(0).toUpperCase()}</span>
         </div>
         
         <h1 className="text-2xl font-bold mb-2">Join {workspace.name}</h1>
-        <p className="text-slate-400 mb-8">
+        <p className="text-muted-foreground mb-8">
           You&apos;ve been invited to join this workspace on VentureDeck.
         </p>
 

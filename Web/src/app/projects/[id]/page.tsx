@@ -125,7 +125,7 @@ export default function ProjectDetailPage() {
                 </div>
                 <div className="glass-panel rounded-2xl p-6">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
+                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
                       <PieChart className="w-5 h-5" />
                     </div>
                     <span className="text-slate-400 text-sm font-medium">Equity Offered</span>
@@ -159,7 +159,7 @@ export default function ProjectDetailPage() {
             {/* Actions */}
             <div className="glass-panel rounded-2xl p-6 sticky top-24">
               <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-indigo-400" />
+                <Shield className="w-5 h-5 text-primary" />
                 Actions
               </h3>
               
@@ -168,7 +168,7 @@ export default function ProjectDetailPage() {
                   {project.workspaceId && (
                     <Link 
                       href={`/workspaces/${project.workspaceId}`}
-                      className="block w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-center rounded-xl font-medium transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40"
+                      className="block w-full py-3 px-4 bg-primary hover:bg-primary/90 text-white text-center rounded-xl font-medium transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40"
                     >
                       Go to Workspace
                     </Link>
@@ -185,7 +185,7 @@ export default function ProjectDetailPage() {
                   {project.workspaceId && (
                     <Link 
                       href={`/workspaces/${project.workspaceId}`}
-                      className="block w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-center rounded-xl font-medium transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40"
+                      className="block w-full py-3 px-4 bg-primary hover:bg-primary/90 text-white text-center rounded-xl font-medium transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40"
                     >
                       Go to Workspace
                     </Link>
@@ -202,7 +202,7 @@ export default function ProjectDetailPage() {
                   </button>
                   <Link 
                     href={`/projects/${projectId}/soft-circles`}
-                    className="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 flex items-center justify-center"
+                    className="w-full py-3.5 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center"
                   >
                     <DollarSign className="w-5 h-5 mr-2" />
                     Soft Circle
@@ -213,7 +213,7 @@ export default function ProjectDetailPage() {
                   !isApplying ? (
                     <button 
                       onClick={() => setIsApplying(true)}
-                      className="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 flex items-center justify-center"
+                      className="w-full py-3.5 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center"
                     >
                       <Send className="w-5 h-5 mr-2" />
                       {myApplication?.status === 'rejected' ? 'Re-apply to Join' : 'Apply to Join'}
@@ -251,7 +251,7 @@ export default function ProjectDetailPage() {
                         </button>
                         <button 
                           type="submit"
-                          className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/20"
+                          className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-medium shadow-lg shadow-primary/20"
                         >
                           Send
                         </button>
@@ -300,7 +300,7 @@ function TeamSection({ projectId, isOwner }: { projectId: Id<'projects'>, isOwne
   return (
     <div className="glass-panel rounded-2xl p-6">
       <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-        <User className="w-5 h-5 text-indigo-400" />
+        <User className="w-5 h-5 text-primary" />
         Team
       </h3>
       <div className="space-y-4">
@@ -341,7 +341,7 @@ function FeaturesSection({ projectId }: { projectId: Id<'projects'> }) {
     <div className="glass-panel rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-indigo-400" />
+          <CheckCircle className="w-5 h-5 text-primary" />
           Project Roadmap & Bounties
         </h3>
         <div className="flex bg-slate-900 rounded-lg p-1">
@@ -402,7 +402,7 @@ function FeaturesSection({ projectId }: { projectId: Id<'projects'> }) {
                 <div className="flex justify-between items-center text-xs text-slate-500">
                   <span>{b.status}</span>
                   {b.status === 'open' && (
-                    <button className="text-indigo-400 hover:text-indigo-300 font-medium">Claim</button>
+                    <button className="text-primary hover:text-indigo-300 font-medium">Claim</button>
                   )}
                 </div>
               </div>
@@ -497,7 +497,7 @@ function TeamMemberItem({ memberId, workspaceId, projectId, roles, isOwner, proj
         </div>
         <div>
           <div className="font-medium text-white text-sm">{user.displayName || user.firstName || user.username}</div>
-          <div className="text-xs text-indigo-400">{role}</div>
+          <div className="text-xs text-primary">{role}</div>
           {user.displayName && <div className="text-[10px] text-slate-500">@{user.username}</div>}
         </div>
       </Link>

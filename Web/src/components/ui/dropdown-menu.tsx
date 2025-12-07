@@ -32,8 +32,8 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({ children, open, onOp
     <div className="relative inline-block text-left" ref={ref}>
       {React.Children.map(children, child => {
         if (React.isValidElement(child)) {
-          // @ts-expect-error - Cloning element to inject props
-          return React.cloneElement(child, { isOpen, setIsOpen });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return React.cloneElement(child as React.ReactElement<any>, { isOpen, setIsOpen });
         }
         return child;
       })}
@@ -67,7 +67,7 @@ DropdownMenuTrigger.displayName = 'DropdownMenuTrigger';
 export const DropdownMenuContent = React.forwardRef<
   HTMLDivElement,
   { children: React.ReactNode; align?: 'start' | 'end' | 'center'; isOpen?: boolean; setIsOpen?: (open: boolean) => void; className?: string }
->(({ children, align = 'center', isOpen, setIsOpen, className, ...props }, ref) => {
+>(({ children, align = 'center', isOpen, className, ...props }, ref) => {
   if (!isOpen) return null;
 
   const alignClass =

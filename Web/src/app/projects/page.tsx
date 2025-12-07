@@ -5,9 +5,11 @@ import { api } from '@convex/_generated/api';
 import { Search, Filter, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { Doc } from '@convex/_generated/dataModel';
+import Image from 'next/image';
 
 export default function ProjectsPage() {
-  const [industry, setIndustry] = useState<string | undefined>(undefined);
+  const [industry] = useState<string | undefined>(undefined);
   const projects = useQuery(api.projects.list, { industry }) || [];
 
   return (
@@ -19,7 +21,7 @@ export default function ProjectsPage() {
         </div>
         <Link 
           href="/projects/create"
-          className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           Create Project
         </Link>
@@ -43,7 +45,7 @@ export default function ProjectsPage() {
       {/* Trending / Featured (Placeholder) */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="w-4 h-4 text-indigo-400" />
+          <TrendingUp className="w-4 h-4 text-primary" />
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">Trending Now</h2>
         </div>
         {/* Horizontal Scroll or Grid */}
@@ -56,14 +58,14 @@ export default function ProjectsPage() {
             No projects found. Be the first to launch!
           </div>
         ) : (
-          projects.map((project: any) => (
+          projects.map((project: Doc<'projects'>) => (
             <Link key={project._id} href={`/projects/${project._id}`}>
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-indigo-500/50 transition-colors">
+              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-primary/50 transition-colors">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center text-xl font-bold">
                       {project.logoUrl ? (
-                        <img src={project.logoUrl} alt="Logo" className="w-full h-full object-cover rounded-lg" />
+                        <Image src={project.logoUrl} alt="Logo" width={48} height={48} className="w-full h-full object-cover rounded-lg" />
                       ) : (
                         project.title[0]
                       )}

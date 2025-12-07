@@ -1,7 +1,8 @@
 'use client';
 
-import { useAuth, useUser, SignOutButton } from '@clerk/nextjs';
+import { useUser, SignOutButton } from '@clerk/nextjs';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
 import { User, Settings, LogOut, ChevronDown, Bell } from 'lucide-react';
 import { useQuery } from 'convex/react';
@@ -49,11 +50,14 @@ export function UserMenu() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 p-1.5 pr-3 rounded-full hover:bg-white/5 transition-colors border border-transparent hover:border-white/10"
       >
-        <img
-          src={avatarUrl}
-          alt={displayName || 'User'}
-          className="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-500/20"
-        />
+        <div className="relative w-8 h-8">
+          <Image
+            src={avatarUrl || ''}
+            alt={displayName || 'User'}
+            fill
+            className="rounded-full object-cover ring-2 ring-indigo-500/20"
+          />
+        </div>
         <span className="text-sm font-medium text-slate-200 hidden md:block">
           {displayName}
         </span>

@@ -67,6 +67,55 @@ export const create = mutation({
   },
 });
 
+// Update an existing project
+export const update = mutation({
+  args: {
+    id: v.id('projects'),
+    title: v.optional(v.string()),
+    tagline: v.optional(v.string()),
+    description: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    fundingGoal: v.optional(v.number()),
+    equityOffered: v.optional(v.number()),
+    logoUrl: v.optional(v.string()),
+    pitchDeckUrl: v.optional(v.string()),
+    status: v.optional(v.union(v.literal('draft'), v.literal('published'), v.literal('funded'), v.literal('closed'))),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthenticated');
+    }
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!user) throw new Error('User not found');
+
+    const project = await ctx.db.get(args.id);
+    if (!project) throw new Error('Project not found');
+
+    if (project.ownerId !== user._id) {
+      throw new Error('Unauthorized');
+    }
+
+    await ctx.db.patch(args.id, {
+      ...(args.title !== undefined ? { title: args.title } : {}),
+      ...(args.tagline !== undefined ? { tagline: args.tagline } : {}),
+      ...(args.description !== undefined ? { description: args.description } : {}),
+      ...(args.industry !== undefined ? { industry: args.industry } : {}),
+      ...(args.fundingGoal !== undefined ? { fundingGoal: args.fundingGoal } : {}),
+      ...(args.equityOffered !== undefined ? { equityOffered: args.equityOffered } : {}),
+      ...(args.logoUrl !== undefined ? { logoUrl: args.logoUrl } : {}),
+      ...(args.pitchDeckUrl !== undefined ? { pitchDeckUrl: args.pitchDeckUrl } : {}),
+      ...(args.status !== undefined ? { status: args.status } : {}),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 // List projects for the discovery feed
 export const list = query({
   args: {

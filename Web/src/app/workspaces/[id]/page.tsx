@@ -111,7 +111,7 @@ export default function WorkspacePage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-bold text-lg truncate max-w-[150px]">{workspace.name}</h1>
-              <Link href={`/projects/${workspace.projectId}`} className="text-xs text-indigo-400 hover:text-indigo-300">
+              <Link href={`/projects/${workspace.projectId}`} className="text-xs text-primary hover:text-indigo-300">
                 View Project
               </Link>
             </div>
@@ -169,7 +169,7 @@ export default function WorkspacePage() {
                         }
                       }
                     }}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm cursor-pointer group ${activeChannelId === channel._id && view === 'chat' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800/50'}`}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm cursor-pointer group ${activeChannelId === channel._id && view === 'chat' ? 'bg-primary text-white' : 'text-slate-300 hover:bg-slate-800/50'}`}
                   >
                     {channel.visibility === 'private' ? <Lock className="w-3 h-3 text-slate-400" /> : <Hash className="w-3 h-3 text-slate-400" />}
                     <span className={`truncate flex-1 ${!isMember && !isGeneral ? 'italic opacity-70' : ''}`}>
@@ -192,7 +192,7 @@ export default function WorkspacePage() {
               <h2 className="text-xs font-semibold text-slate-500 uppercase mb-2">Management</h2>
               <div 
                 onClick={() => setView('applications')}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm cursor-pointer ${view === 'applications' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800/50'}`}
+                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm cursor-pointer ${view === 'applications' ? 'bg-primary text-white' : 'text-slate-300 hover:bg-slate-800/50'}`}
               >
                 <User className="w-4 h-4 text-slate-400" />
                 Applications
@@ -247,12 +247,12 @@ export default function WorkspacePage() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder={`Message #${activeChannel?.name || 'general'}`}
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white focus:border-indigo-500 outline-none"
+                  className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white focus:border-primary outline-none"
                 />
                 <button
                   type="submit"
                   disabled={!newMessage.trim()}
-                  className="p-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white transition-colors"
+                  className="p-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white transition-colors"
                 >
                   <Send className="w-5 h-5" />
                 </button>
@@ -281,13 +281,13 @@ export default function WorkspacePage() {
                   name="name"
                   type="text" 
                   placeholder="e.g. marketing, design"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:border-indigo-500 outline-none"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:border-primary outline-none"
                   autoFocus
                   required
                 />
               </div>
               <div className="flex items-center gap-3">
-                <input type="checkbox" name="isPrivate" id="isPrivate" className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500" />
+                <input type="checkbox" name="isPrivate" id="isPrivate" className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-primary" />
                 <label htmlFor="isPrivate" className="text-sm text-slate-300 select-none">Private Room (Invite Only)</label>
               </div>
               <div className="pt-2 flex gap-3">
@@ -300,7 +300,7 @@ export default function WorkspacePage() {
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/20"
+                  className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-medium shadow-lg shadow-primary/20"
                 >
                   Create Room
                 </button>
@@ -374,7 +374,7 @@ function MessageItem({ message, currentUserId }: { message: Doc<'messages'>, cur
           <span className="text-xs text-slate-500">{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
         <div className={`px-4 py-2 rounded-2xl text-sm ${
-          isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'
+          isMe ? 'bg-primary text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'
         }`}>
           {message.content}
         </div>
@@ -464,7 +464,7 @@ function ApplicationItem({ application, onAccept, onInterview, onReject }: Appli
           </div>
           <div>
             <h3 className="font-bold text-white">{applicant.displayName || applicant.firstName || applicant.username}</h3>
-            <p className="text-sm text-indigo-400">{application.role}</p>
+            <p className="text-sm text-primary">{application.role}</p>
           </div>
         </Link>
         <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
@@ -491,7 +491,7 @@ function ApplicationItem({ application, onAccept, onInterview, onReject }: Appli
           </button>
           <button 
             onClick={onInterview}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg transition-colors"
           >
             Interview
           </button>

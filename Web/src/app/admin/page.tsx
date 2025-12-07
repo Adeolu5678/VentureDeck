@@ -87,10 +87,10 @@ export default function AdminDashboardPage() {
           ) : (
             <div className="grid gap-4">
               {pendingCertifications.map((cert) => (
-                <div key={cert._id} className="bg-slate-900/50 border border-white/5 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center gap-4">
+                <div key={cert._id} className="bg-muted/50 border border-border/5 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center gap-4">
                   <div className="w-16 h-16 bg-muted rounded-lg relative overflow-hidden shrink-0">
                     {/* In a real app, this would be the certification image */}
-                    <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground bg-slate-800">
+                    <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground bg-background">
                       IMG
                     </div>
                   </div>
@@ -108,14 +108,14 @@ export default function AdminDashboardPage() {
                   <div className="flex items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
                     <button
                       onClick={() => handleVerify(cert._id)}
-                      className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                      className="flex-1 md:flex-none px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
                     >
                       <CheckCircle className="w-4 h-4" />
                       Verify
                     </button>
                     <button
                       onClick={() => handleReject(cert._id)}
-                      className="flex-1 md:flex-none px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                      className="flex-1 md:flex-none px-4 py-2 bg-destructive hover:bg-destructive/90 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
                     >
                       <XCircle className="w-4 h-4" />
                       Reject

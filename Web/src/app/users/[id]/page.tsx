@@ -40,11 +40,11 @@ interface TabButtonProps {
   label: string;
 }
 
-import { use } from 'react';
+import { useParams } from 'next/navigation';
 
-export default function PublicProfilePage({ params }: { params: Promise<{ id: Id<'users'> }> }) {
-  const { id } = use(params);
-  const userId = id;
+export default function PublicProfilePage() {
+  const params = useParams();
+  const userId = params.id as Id<'users'>;
   
   const currentUser = useQuery(api.users.getCurrentUser);
   const user = useQuery(api.users.getUser, { id: userId }) as UserData | undefined;

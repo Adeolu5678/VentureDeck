@@ -1,8 +1,10 @@
 'use client';
 
+import { Id } from '@convex/_generated/dataModel';
+
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
-import { Bell, Check, Trash2, ExternalLink } from 'lucide-react';
+import { Bell, Check, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -17,7 +19,7 @@ export default function NotificationsPage() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const handleMarkAsRead = async (id: any) => {
+  const handleMarkAsRead = async (id: Id<'notifications'>) => {
     await markAsRead({ notificationId: id });
   };
 
@@ -30,12 +32,12 @@ export default function NotificationsPage() {
       <div className="max-w-3xl mx-auto px-6 py-12">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
-              <Bell className="w-5 h-5 text-indigo-400" />
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+              <Bell className="w-5 h-5 text-primary" />
             </div>
             <h1 className="text-2xl font-bold">Notifications</h1>
             {unreadCount > 0 && (
-              <span className="bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+              <span className="bg-primary text-white text-xs font-bold px-2 py-1 rounded-full">
                 {unreadCount} New
               </span>
             )}
@@ -64,7 +66,7 @@ export default function NotificationsPage() {
                 className={`group relative p-6 rounded-2xl border transition-all ${
                   notification.read 
                     ? 'bg-slate-900/30 border-white/5 opacity-75 hover:opacity-100' 
-                    : 'bg-slate-900 border-indigo-500/30 shadow-lg shadow-indigo-500/10'
+                    : 'bg-slate-900 border-primary/30 shadow-lg shadow-primary/10'
                 }`}
               >
                 <div className="flex gap-4">
@@ -86,7 +88,7 @@ export default function NotificationsPage() {
                       {notification.link && (
                         <Link 
                           href={notification.link}
-                          className="inline-flex items-center text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                          className="inline-flex items-center text-xs font-medium text-primary hover:text-indigo-300 transition-colors"
                         >
                           View Details
                           <ExternalLink className="w-3 h-3 ml-1" />

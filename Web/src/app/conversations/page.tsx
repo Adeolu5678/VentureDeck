@@ -44,8 +44,8 @@ export default function ConversationsPage() {
     <div className="min-h-screen bg-slate-950 text-white pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
       <div className="w-full max-w-4xl">
         <header className="flex items-center gap-3 mb-8 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm">
-          <div className="bg-indigo-500/20 p-2.5 rounded-xl">
-            <Sparkles className="w-6 h-6 text-indigo-400" />
+          <div className="bg-primary/20 p-2.5 rounded-xl">
+            <Sparkles className="w-6 h-6 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Conversations</h1>
@@ -124,7 +124,7 @@ export default function ConversationsPage() {
                     {Object.keys(workspaceGroups).length > 0 && (
                         <section>
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                <MessageSquare className="w-5 h-5 text-indigo-400" />
+                                <MessageSquare className="w-5 h-5 text-primary" />
                                 Workspaces
                             </h2>
                             <div className="space-y-6">
@@ -203,7 +203,7 @@ function ConversationCard({ conversation }: { conversation: any }) {
 
     return (
         <Link href={`/conversations/${conversation._id}`} className="block w-full">
-            <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 hover:border-indigo-500/50 transition-colors flex items-center gap-3">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 hover:border-primary/50 transition-colors flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${typeConfig.bg} ${typeConfig.color} shrink-0`}>
                     <Icon className="w-5 h-5" />
                 </div>

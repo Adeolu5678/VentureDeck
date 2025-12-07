@@ -152,7 +152,7 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-slate-950 text-white p-6 pb-24">
       <div className="max-w-4xl mx-auto">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-400">
             Settings
           </h1>
           <p className="text-slate-400 mt-2">Manage your profile and preferences</p>
@@ -167,7 +167,7 @@ export default function SettingsPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   activeTab === tab.id
-                    ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-600/20'
+                    ? 'bg-primary/10 text-primary border border-primary/20'
                     : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
                 }`}
               >
@@ -184,13 +184,13 @@ export default function SettingsPage() {
                 {/* Basic Info */}
                 <section className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm">
                   <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                    <Briefcase size={20} className="text-indigo-400" />
+                    <Briefcase size={20} className="text-primary" />
                     Professional Info
                   </h2>
                   
                   <div className="flex items-start gap-6 mb-8">
                     <div className="relative group">
-                      <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-slate-800 ring-2 ring-indigo-500/20 group-hover:ring-indigo-500/50 transition-all">
+                      <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-slate-800 ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all">
                         {previewUrl ? (
                           <Image src={previewUrl} alt="Profile" fill className="object-cover" />
                         ) : (
@@ -397,7 +397,7 @@ export default function SettingsPage() {
                         onClick={() => setPrivacy({ profileVisibility: 'public' })}
                         className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                           privacy.profileVisibility === 'public'
-                            ? 'bg-indigo-600 text-white shadow-sm'
+                            ? 'bg-primary text-white shadow-sm'
                             : 'text-slate-400 hover:text-slate-200'
                         }`}
                       >
@@ -407,7 +407,7 @@ export default function SettingsPage() {
                         onClick={() => setPrivacy({ profileVisibility: 'private' })}
                         className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                           privacy.profileVisibility === 'private'
-                            ? 'bg-indigo-600 text-white shadow-sm'
+                            ? 'bg-primary text-white shadow-sm'
                             : 'text-slate-400 hover:text-slate-200'
                         }`}
                       >

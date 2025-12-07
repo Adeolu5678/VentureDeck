@@ -65,11 +65,11 @@ export default function LegalPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6 pb-24">
+    <div className="min-h-screen bg-background text-foreground p-6 pb-24">
       <div className="max-w-5xl mx-auto">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <Link href={`/workspaces/${workspaceId}`} className="text-sm text-slate-400 hover:text-white mb-2 block">
+            <Link href={`/workspaces/${workspaceId}`} className="text-sm text-muted-foreground hover:text-foreground mb-2 block">
               &larr; Back to Workspace
             </Link>
             <h1 className="text-2xl font-bold">Legal Documents</h1>
@@ -77,7 +77,7 @@ export default function LegalPage() {
           </div>
           <button 
             onClick={() => setIsDrafting(true)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium flex items-center gap-2 transition-colors"
           >
             <Plus className="w-4 h-4" />
             Draft New Document
@@ -94,14 +94,14 @@ export default function LegalPage() {
                   <button
                     type="button"
                     onClick={() => setDraftType('SAFE')}
-                    className={`flex-1 py-2 px-4 rounded-lg border ${draftType === 'SAFE' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-400'}`}
+                    className={`flex-1 py-2 px-4 rounded-lg border ${draftType === 'SAFE' ? 'bg-primary border-primary text-primary-foreground' : 'bg-muted border border-border text-muted-foreground'}`}
                   >
                     SAFE
                   </button>
                   <button
                     type="button"
                     onClick={() => setDraftType('NDA')}
-                    className={`flex-1 py-2 px-4 rounded-lg border ${draftType === 'NDA' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-400'}`}
+                    className={`flex-1 py-2 px-4 rounded-lg border ${draftType === 'NDA' ? 'bg-primary border-primary text-primary-foreground' : 'bg-muted border border-border text-muted-foreground'}`}
                   >
                     NDA
                   </button>
@@ -148,13 +148,13 @@ export default function LegalPage() {
                 <button 
                   type="button" 
                   onClick={() => setIsDrafting(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white"
+                  className="px-4 py-2 text-muted-foreground hover:text-foreground"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
-                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium"
+                  className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
                 >
                   Generate Draft
                 </button>
@@ -165,17 +165,17 @@ export default function LegalPage() {
 
         <div className="grid gap-4">
           {docs?.length === 0 ? (
-            <div className="text-center py-12 bg-slate-900/30 border border-slate-800 rounded-2xl">
-              <FileText className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+            <div className="text-center py-12 bg-muted/30 border border-border rounded-2xl">
+              <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-white">No documents yet</h3>
-              <p className="text-slate-500">Draft a new document or upload one to get started.</p>
+              <p className="text-muted-foreground">Draft a new document or upload one to get started.</p>
             </div>
           ) : (
             docs?.map((doc) => (
               <div key={doc._id} className="glass-panel p-4 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-slate-800 rounded-lg">
-                    <FileText className="w-6 h-6 text-indigo-400" />
+                  <div className="p-3 bg-muted rounded-lg">
+                    <FileText className="w-6 h-6 text-primary" />
                   </div>
                   <div>
                     <h3 className="font-medium text-white">{doc.type} Agreement</h3>
@@ -194,7 +194,7 @@ export default function LegalPage() {
                       href={doc.url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                      className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                       title="Download"
                     >
                       <Download className="w-5 h-5" />
