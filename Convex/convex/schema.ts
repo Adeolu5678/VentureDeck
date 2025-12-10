@@ -45,7 +45,11 @@ export default defineSchema({
   })
     .index('by_clerk_id', ['clerkId'])
     .index('by_email', ['email'])
-    .index('by_role', ['role']),
+    .index('by_role', ['role'])
+    .searchIndex('search_username', {
+      searchField: 'username',
+      filterFields: ['role']
+    }),
 
   // Certifications table - for user verification
   certifications: defineTable({
@@ -91,7 +95,8 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index('by_project', ['projectId']),
+    .index('by_project', ['projectId'])
+    .index('by_member', ['members']),
 
   // Applications table - for joining projects
   applications: defineTable({

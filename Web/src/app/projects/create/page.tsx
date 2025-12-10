@@ -1,15 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useAction } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { useRouter } from 'next/navigation';
 import { Upload, Check, ChevronRight, ChevronLeft } from 'lucide-react';
+import { useBottomNav } from '@/context/BottomNavContext';
 
 export default function CreateProjectPage() {
   const router = useRouter();
   const createProject = useMutation(api.projects.create);
   const generateUploadUrl = useAction(api.fileStorage.generateUploadUrl);
+  const { setActions } = useBottomNav();
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -54,7 +56,7 @@ export default function CreateProjectPage() {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     setIsSubmitting(true);
     try {
       const projectId = await createProject({
@@ -75,7 +77,35 @@ export default function CreateProjectPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [createProject, formData, router]);
+
+
+
+  useEffect(() => {
+    let action = null;
+    if (step < 4) {
+      action = (
+        <button
+          onClick={() => setStep(s => s + 1)}
+          className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm shadow-lg shadow-primary/20"
+        >
+          Next <ChevronRight className="ml-2 h-4 w-4" />
+        </button>
+      );
+    } else {
+      action = (
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm shadow-lg shadow-primary/20 disabled:opacity-50"
+        >
+          {isSubmitting ? 'Publishing...' : 'Publish'} <Check className="ml-2 h-4 w-4" />
+        </button>
+      );
+    }
+    setActions(action);
+    return () => setActions(null);
+  }, [step, isSubmitting, setActions, handleSubmit]);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">

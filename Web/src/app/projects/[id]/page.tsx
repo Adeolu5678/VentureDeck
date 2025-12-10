@@ -10,6 +10,8 @@ import { Id, Doc } from '@convex/_generated/dataModel';
 import Image from 'next/image';
 import MemberMenu from '@/components/MemberMenu';
 import { toast } from 'sonner';
+import { useBottomNav } from '@/context/BottomNavContext';
+import { useEffect, useCallback } from 'react';
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -26,16 +28,15 @@ export default function ProjectDetailPage() {
   const [isApplying, setIsApplying] = useState(false);
   const [applicationRole, setApplicationRole] = useState('');
   const [applicationMessage, setApplicationMessage] = useState('');
+  const { setActions } = useBottomNav();
 
-  if (!project) return <div>Loading...</div>;
-
-  const isOwner = user && project.ownerId === user._id;
+  const isOwner = !!(user && project && project.ownerId === user._id);
   const isMember = myApplication?.status === 'accepted' || isOwner;
   const isInvestor = user?.role === 'investor';
   const isEntrepreneur = user?.role === 'entrepreneur';
   const applicationSent = !!myApplication;
 
-  const handleApply = async (e: React.FormEvent) => {
+  const handleApply = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     
@@ -51,10 +52,10 @@ export default function ProjectDetailPage() {
       console.error(error);
       toast.error('Failed to send application');
     }
-  };
+  }, [user, apply, projectId, applicationRole, applicationMessage]);
 
-  const handleContactFounder = async () => {
-    if (!user) return;
+  const handleContactFounder = useCallback(async () => {
+    if (!user || !project) return;
     try {
       const conversationId = await createDirectMessage({
         participantId: project.ownerId,
@@ -65,10 +66,61 @@ export default function ProjectDetailPage() {
       console.error(error);
       toast.error('Failed to start conversation');
     }
-  };
+  }, [user, project, createDirectMessage, router]);
+
+
+
+  useEffect(() => {
+    let action = null;
+
+    if (isOwner) {
+      action = (
+        <Link 
+          href={`/projects/${projectId}/edit`}
+          className="flex-1 py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white text-center rounded-full font-medium transition-all text-sm"
+        >
+          Edit Project
+        </Link>
+      );
+    } else if (isInvestor) {
+      action = (
+        <button 
+          onClick={handleContactFounder}
+          className="flex-1 py-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full font-bold transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 flex items-center justify-center text-sm"
+        >
+          <MessageSquare className="w-4 h-4 mr-2" />
+          Contact Founder
+        </button>
+      );
+    } else if (isEntrepreneur) {
+      if (!applicationSent || myApplication?.status === 'rejected') {
+         action = (
+            <button 
+              onClick={() => setIsApplying(true)}
+              className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center text-sm"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              {myApplication?.status === 'rejected' ? 'Re-apply' : 'Apply'}
+            </button>
+         );
+      } else {
+        action = (
+          <div className="flex-1 py-2 px-4 bg-emerald-900/20 border border-emerald-500/20 text-emerald-400 rounded-full font-medium flex items-center justify-center text-sm">
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Sent
+          </div>
+        );
+      }
+    }
+
+    setActions(action);
+    return () => setActions(null);
+  }, [isOwner, isInvestor, isEntrepreneur, applicationSent, myApplication, projectId, handleContactFounder, setActions]);
+
+  if (!project) return <div>Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 pb-20">
+    <div>
       {/* Header Image */}
       <div className="h-64 w-full relative bg-slate-900">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950" />

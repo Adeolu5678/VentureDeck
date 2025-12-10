@@ -7,6 +7,8 @@ import { useState } from 'react';
 import { Id } from '@convex/_generated/dataModel';
 import { CheckCircle, Circle, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { useBottomNav } from '@/context/BottomNavContext';
+import { useEffect } from 'react';
 
 export default function MilestonesPage() {
   const params = useParams();
@@ -15,16 +17,33 @@ export default function MilestonesPage() {
   const user = useQuery(api.users.getCurrentUser);
   const project = useQuery(api.projects.get, { id: projectId });
   const milestones = useQuery(api.milestones.list, { projectId }) || [];
+
   const createMilestone = useMutation(api.milestones.create);
+  const { setActions } = useBottomNav();
 
   const [isCreating, setIsCreating] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
 
-  if (!project || !user) return null;
+  const isOwner = user && project ? user._id === project.ownerId : false;
 
-  const isOwner = user._id === project.ownerId;
+  useEffect(() => {
+    if (isOwner) {
+      setActions(
+        <button
+          onClick={() => setIsCreating(true)}
+          className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm shadow-lg shadow-primary/20"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Milestone
+        </button>
+      );
+    }
+    return () => setActions(null);
+  }, [isOwner, setActions]);
+
+  if (!project || !user) return null;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +57,7 @@ export default function MilestonesPage() {
     setTitle('');
     setDescription('');
     setDate('');
+
   };
 
   return (

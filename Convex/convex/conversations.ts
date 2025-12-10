@@ -52,6 +52,55 @@ export const createDirectMessage = mutation({
   },
 });
 
+export const getOrCreateWorkspaceDirectMessage = mutation({
+  args: {
+    participantId: v.id('users'),
+    workspaceId: v.id('workspaces'),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!user) throw new Error('User not found');
+
+    // Check for existing direct conversation in this workspace
+    const existingConversation = await ctx.db
+      .query('conversations')
+      .withIndex('by_type', q => q.eq('type', 'direct'))
+      .filter(q => 
+        q.and(
+          q.eq(q.field('workspaceId'), args.workspaceId),
+        )
+      )
+      .collect();
+
+    const match = existingConversation.find(c => 
+      c.participantIds.includes(user._id) && 
+      c.participantIds.includes(args.participantId) &&
+      c.workspaceId === args.workspaceId
+    );
+
+    if (match) {
+      return match._id;
+    }
+
+    const conversationId = await ctx.db.insert('conversations', {
+      participantIds: [user._id, args.participantId],
+      type: 'direct',
+      workspaceId: args.workspaceId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return conversationId;
+  },
+});
+
 // Send a message
 export const sendMessage = mutation({
   args: {
@@ -171,6 +220,7 @@ export const list = query({
       let projectRole = undefined;
 
       let applicationRole = undefined;
+      let applicantId = undefined;
 
       if (c.projectId) {
         const project = await ctx.db.get(c.projectId);
@@ -185,6 +235,7 @@ export const list = query({
         const application = await ctx.db.get(c.applicationId);
         if (application) {
           applicationRole = application.role;
+          applicantId = application.applicantId;
         }
       }
 
@@ -209,8 +260,10 @@ export const list = query({
         projectRole,
         applicationRole,
         otherUserName: otherUser ? (otherUser.displayName || otherUser.firstName || otherUser.username) : undefined,
+        otherUserUsername: otherUser?.username,
         otherUserRole: otherUser?.role,
         workspaceName,
+        applicantId,
       };
     }));
   },

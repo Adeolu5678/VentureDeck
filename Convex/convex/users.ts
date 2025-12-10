@@ -1,5 +1,5 @@
 import { v } from 'convex/values';
-import { mutation, query, MutationCtx } from './_generated/server';
+import { mutation, query, internalMutation, MutationCtx } from './_generated/server';
 import { Doc, Id } from './_generated/dataModel';
 import { UserIdentity } from 'convex/server';
 
@@ -55,7 +55,14 @@ export const setRole = mutation({
 
     if (!user) throw new Error('User not found');
 
-  await ctx.db.patch(user._id, { role: args.role });
+    // Prevent overwriting existing role unless it's a specific admin override (not implemented yet)
+    // or if the user is in a 'guest' state (which isn't current schema).
+    // For now, stricter safety:
+    if (user.role && user.role !== args.role) {
+      throw new Error("Role cannot be changed once set. Please contact support.");
+    }
+
+    await ctx.db.patch(user._id, { role: args.role });
   },
 });
 
@@ -67,9 +74,12 @@ export const setAdmin = mutation({
     secret: v.string() 
   },
   handler: async (ctx, args) => {
-    // Simple secret key protection for MVP
-    // In production, this should be an environment variable or a more robust auth check
-    const ADMIN_SECRET = "venture-deck-admin-2025";
+    // Environment variable for admin secret
+    const ADMIN_SECRET = process.env.ADMIN_SECRET;
+    
+    if (!ADMIN_SECRET) {
+      throw new Error("Admin secret not configured");
+    }
     
     if (args.secret !== ADMIN_SECRET) {
       throw new Error("Invalid admin secret");
@@ -90,22 +100,17 @@ export const searchUsers = query({
   handler: async (ctx, args) => {
     const { query, limit = 20, offset = 0, excludeUserId } = args;
 
-    // For MVP, we'll just fetch all users and filter in memory.
-    // In production, we should use Convex's search capabilities (Search Indexes).
-    const users = await ctx.db.query('users').collect();
+    // Use the search index for efficient text search
+    // Note: Search indexes are eventually consistent.
+    const users = await ctx.db
+      .query('users')
+      .withSearchIndex('search_username', (q) => q.search('username', query))
+      .take(limit);
 
-    const lowerQuery = query.toLowerCase();
-
-    const filtered = users.filter(user => {
-      if (excludeUserId && user._id === excludeUserId) return false;
-
-      const username = user.username.toLowerCase();
-      // Also search by name if available, but prioritize username display
-      const name = `${user.firstName || ''} ${user.lastName || ''}`
-        .trim()
-        .toLowerCase();
-
-      return username.includes(lowerQuery) || name.includes(lowerQuery);
+    // Filter logic can be simplified or done post-fetch since search already did the heavy lifting
+    const filtered = users.filter((user) => {
+        if (excludeUserId && user._id === excludeUserId) return false;
+        return true;
     });
 
     // Pagination
@@ -143,9 +148,9 @@ export const findMoodMatch = query({
 
     if (!currentUser) return null;
 
-    // For MVP, just pick a random user who is not the current user
-    // In production, this would use vector search or matching logic based on 'mood'
-    const users = await ctx.db.query('users').collect();
+    // For MVP, limit the pool of candidates to avoid scanning the whole DB.
+    // In production, use a dedicated random index or vector search.
+    const users = await ctx.db.query('users').take(50);
     const candidates = users.filter(u => u._id !== currentUser._id);
 
     if (candidates.length === 0) return null;
@@ -204,36 +209,25 @@ export async function ensureUserExists(ctx: MutationCtx, identity: UserIdentity)
   return newUserId;
 }
 
-export const createOrUpdateUser = mutation({
-  args: {
-    clerkId: v.string(),
-    username: v.string(),
-    email: v.string(),
-    firstName: v.optional(v.string()),
-    lastName: v.optional(v.string()),
-    avatarUrl: v.optional(v.string()),
-    // Launchpad Fields
-    role: v.optional(v.union(v.literal('entrepreneur'), v.literal('investor'))),
-    professionalBio: v.optional(v.string()),
-    linkedinUrl: v.optional(v.string()),
-    githubUrl: v.optional(v.string()),
-    skills: v.optional(v.array(v.string())),
-    interests: v.optional(v.array(v.string())),
-    notificationPreferences: v.optional(
-      v.object({
-        email: v.boolean(),
-        push: v.boolean(),
-      })
-    ),
-    privacySettings: v.optional(
-      v.object({
-        profileVisibility: v.union(v.literal('public'), v.literal('private')),
-      })
-    ),
-    avatarStorageId: v.optional(v.string()),
-    displayName: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
+// Helper for user upsert logic
+async function upsertUser(ctx: MutationCtx, args: {
+  clerkId: string;
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+  role?: 'entrepreneur' | 'investor';
+  professionalBio?: string;
+  linkedinUrl?: string;
+  githubUrl?: string;
+  skills?: string[];
+  interests?: string[];
+  notificationPreferences?: { email: boolean; push: boolean };
+  privacySettings?: { profileVisibility: 'public' | 'private' };
+  avatarStorageId?: string;
+  displayName?: string;
+}) {
     const existing = await ctx.db
       .query('users')
       .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkId))
@@ -296,5 +290,79 @@ export const createOrUpdateUser = mutation({
         needsUsernameSelection: false,
       });
     }
+}
+
+export const createOrUpdateUser = mutation({
+  args: {
+    // clerkId removed - sourced from auth
+    username: v.string(),
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+    // Launchpad Fields
+    role: v.optional(v.union(v.literal('entrepreneur'), v.literal('investor'))),
+    professionalBio: v.optional(v.string()),
+    linkedinUrl: v.optional(v.string()),
+    githubUrl: v.optional(v.string()),
+    skills: v.optional(v.array(v.string())),
+    interests: v.optional(v.array(v.string())),
+    notificationPreferences: v.optional(
+      v.object({
+        email: v.boolean(),
+        push: v.boolean(),
+      })
+    ),
+    privacySettings: v.optional(
+      v.object({
+        profileVisibility: v.union(v.literal('public'), v.literal('private')),
+      })
+    ),
+    avatarStorageId: v.optional(v.string()),
+    displayName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Called createOrUpdateUser without authentication present");
+    }
+    const clerkId = identity.subject;
+
+    return await upsertUser(ctx, { ...args, clerkId });
+  },
+});
+
+export const internalUpdateUser = internalMutation({
+  args: {
+    clerkId: v.string(),
+    username: v.string(),
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+    // Launchpad Fields
+    role: v.optional(v.union(v.literal('entrepreneur'), v.literal('investor'))),
+    professionalBio: v.optional(v.string()),
+    linkedinUrl: v.optional(v.string()),
+    githubUrl: v.optional(v.string()),
+    skills: v.optional(v.array(v.string())),
+    interests: v.optional(v.array(v.string())),
+    notificationPreferences: v.optional(
+      v.object({
+        email: v.boolean(),
+        push: v.boolean(),
+      })
+    ),
+    privacySettings: v.optional(
+      v.object({
+        profileVisibility: v.union(v.literal('public'), v.literal('private')),
+      })
+    ),
+    avatarStorageId: v.optional(v.string()),
+    displayName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Trusted internal call - relies on 'internal' visibility
+    return await upsertUser(ctx, args);
   },
 });

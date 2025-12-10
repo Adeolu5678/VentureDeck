@@ -8,7 +8,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search, TrendingUp, Users, ArrowRight, Sparkles } from 'lucide-react';
 import Image from 'next/image';
-import MatchmakingWidget from '../../../components/MatchmakingWidget';
+import MatchmakingWidget from '@/components/MatchmakingWidget';
+import { useBottomNav } from '@/context/BottomNavContext';
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
@@ -25,25 +26,8 @@ export default function DashboardPage() {
     }
   }, [isLoaded, user, router]);
 
-  useEffect(() => {
-    if (isLoaded && user && convexUser === null) {
-      const syncUser = async () => {
-        try {
-          await createUser({
-            clerkId: user.id,
-            username: user.username || user.firstName || 'User',
-            email: user.emailAddresses[0]?.emailAddress || '',
-            firstName: user.firstName || undefined,
-            lastName: user.lastName || undefined,
-            avatarUrl: user.imageUrl,
-          });
-        } catch (error) {
-          console.error("Failed to sync user:", error);
-        }
-      };
-      syncUser();
-    }
-  }, [isLoaded, user, convexUser, createUser]);
+  // Removed auto-sync useEffect to rely on Webhooks and avoid race conditions.
+  // Manual sync is now provided in the UI fallback below.
 
   if (!isLoaded) return null;
   if (!user) return null;
@@ -65,7 +49,28 @@ export default function DashboardPage() {
         <div className="text-center animate-in fade-in zoom-in duration-500">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-6" />
           <h2 className="text-xl font-bold mb-2">Setting up your account...</h2>
-          <p className="text-muted-foreground">Please wait while we prepare your workspace.</p>
+          <p className="text-muted-foreground mb-4">Please wait while we prepare your workspace.</p>
+          
+          {/* Manual Fallback if Webhook is slow/missed */}
+          <button 
+            onClick={async () => {
+              try {
+                await createUser({
+                  username: user.username || user.firstName || 'User',
+                  email: user.emailAddresses[0]?.emailAddress || '',
+                  firstName: user.firstName || undefined,
+                  lastName: user.lastName || undefined,
+                  avatarUrl: user.imageUrl,
+                });
+                window.location.reload(); 
+              } catch (err) {
+                console.error("Manual sync failed", err);
+              }
+            }}
+            className="text-sm text-primary hover:underline"
+          >
+            Taking too long? Click here to sync manually.
+          </button>
         </div>
       </div>
     );
@@ -155,6 +160,20 @@ function RoleSelection() {
 
 function EntrepreneurDashboard() {
   const myProjects = useQuery(api.projects.getMyProjects) || [];
+  const { setActions } = useBottomNav();
+
+  useEffect(() => {
+    setActions(
+      <Link 
+        href="/projects/create" 
+        className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center text-sm"
+      >
+        <Plus className="w-4 h-4 mr-2" />
+        New Project
+      </Link>
+    );
+    return () => setActions(null);
+  }, [setActions]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
@@ -260,6 +279,20 @@ function JoinedProjectsSection() {
 
 function InvestorDashboard() {
   const projects = useQuery(api.projects.list, {}) || [];
+  const { setActions } = useBottomNav();
+
+  useEffect(() => {
+    setActions(
+      <button 
+        onClick={() => (document.querySelector('input[placeholder="Search projects..."]') as HTMLInputElement)?.focus()}
+        className="flex-1 py-2 px-4 bg-accent hover:bg-accent/90 text-white rounded-full font-bold transition-all shadow-lg shadow-accent/20 hover:shadow-accent/40 flex items-center justify-center text-sm"
+      >
+        <Search className="w-4 h-4 mr-2" />
+        Search
+      </button>
+    );
+    return () => setActions(null);
+  }, [setActions]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">

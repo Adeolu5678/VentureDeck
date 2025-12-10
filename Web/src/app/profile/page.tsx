@@ -9,6 +9,9 @@ import { Briefcase, Shield, User } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { shortenUrl } from '@/lib/utils';
+import { useBottomNav } from '@/context/BottomNavContext';
+import { useEffect } from 'react';
+import { Settings } from 'lucide-react';
 
 interface UserData {
   _id: Id<"users">;
@@ -43,6 +46,20 @@ export default function ProfilePage() {
   const { isLoaded } = useUser();
   const convexUser = useQuery(api.users.getCurrentUser) as UserData | undefined;
   const [activeTab, setActiveTab] = useState<'about' | 'portfolio' | 'reputation' | 'certifications'>('about');
+  const { setActions } = useBottomNav();
+
+  useEffect(() => {
+    setActions(
+      <Link 
+        href="/settings" 
+        className="flex-1 py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm"
+      >
+        <Settings className="w-4 h-4 mr-2" />
+        Edit Profile
+      </Link>
+    );
+    return () => setActions(null);
+  }, [setActions]);
 
   if (!isLoaded || !convexUser) return null;
 

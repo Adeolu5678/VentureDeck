@@ -1,11 +1,16 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { ConvexReactClient, AuthLoading, Authenticated, Unauthenticated } from 'convex/react';
+import { ConvexReactClient, AuthLoading } from 'convex/react';
 import { ClerkProvider, useAuth } from '@clerk/nextjs';
 import { ConvexProviderWithClerk } from 'convex/react-clerk';
 
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+if (!convexUrl) {
+  throw new Error("Missing NEXT_PUBLIC_CONVEX_URL environment variable");
+}
+
+const convex = new ConvexReactClient(convexUrl);
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   return (
@@ -19,8 +24,7 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
             </div>
           </div>
         </AuthLoading>
-        <Authenticated>{children}</Authenticated>
-        <Unauthenticated>{children}</Unauthenticated>
+        {children}
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );

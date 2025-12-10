@@ -192,12 +192,11 @@ export const getProjectsIAmMemberOf = query({
 
     if (!user) return [];
 
-    // 1. Find all workspaces where user is a member
-    // Note: This is a scan on workspaces, which is fine for now as workspaces are 1:1 with projects
-    // Ideally we'd have an index on members, but Convex handles array indexes differently.
-    // For MVP, filtering in memory or scanning is acceptable.
-    const allWorkspaces = await ctx.db.query('workspaces').collect();
-    const myWorkspaces = allWorkspaces.filter(w => w.members.includes(user._id));
+    // 1. Find all workspaces where user is a member using the efficient index
+    const myWorkspaces = await ctx.db
+      .query('workspaces')
+      .withIndex('by_member', (q) => q.eq('members', user._id as any))
+      .collect();
 
     // 2. Fetch the projects for these workspaces
     const projects = [];

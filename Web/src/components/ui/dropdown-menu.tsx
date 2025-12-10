@@ -67,7 +67,9 @@ DropdownMenuTrigger.displayName = 'DropdownMenuTrigger';
 export const DropdownMenuContent = React.forwardRef<
   HTMLDivElement,
   { children: React.ReactNode; align?: 'start' | 'end' | 'center'; isOpen?: boolean; setIsOpen?: (open: boolean) => void; className?: string }
->(({ children, align = 'center', isOpen, className, ...props }, ref) => {
+>(({ children, align = 'center', isOpen, setIsOpen: _setIsOpen, className, ...props }, ref) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _ = _setIsOpen;
   if (!isOpen) return null;
 
   const alignClass =

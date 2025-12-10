@@ -98,7 +98,6 @@ export default function SettingsPage() {
       const { storageId } = await result.json();
 
       await createOrUpdateUser({
-          clerkId: user.clerkId,
           username: user.username,
           email: user.email,
           avatarStorageId: storageId,
@@ -117,7 +116,6 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await createOrUpdateUser({
-        clerkId: user.clerkId,
         username: user.username,
         email: formData.email,
         firstName: formData.firstName,

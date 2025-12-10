@@ -7,6 +7,8 @@ import { useState } from 'react';
 import { Id, Doc } from '@convex/_generated/dataModel';
 import { DollarSign } from 'lucide-react';
 import Link from 'next/link';
+import { useBottomNav } from '@/context/BottomNavContext';
+import { useEffect } from 'react';
 
 export default function SoftCirclesPage() {
   const params = useParams();
@@ -15,7 +17,9 @@ export default function SoftCirclesPage() {
   const user = useQuery(api.users.getCurrentUser);
   const project = useQuery(api.projects.get, { id: projectId });
   const commitments = useQuery(api.soft_circles.get, { projectId }) || [];
+
   const commit = useMutation(api.soft_circles.commit);
+  const { setActions } = useBottomNav();
 
   const myCommitment = commitments?.find((c: Doc<'soft_circles'>) => c.investorId === user?._id);
 
@@ -27,10 +31,25 @@ export default function SoftCirclesPage() {
       setAmount(myCommitment.amount.toString());
   }
 
-  if (!project || !user) return null;
+  const isOwner = user && project ? user._id === project.ownerId : false;
+  const isInvestor = user ? user.role === 'investor' : false;
 
-  const isOwner = user._id === project.ownerId;
-  const isInvestor = user.role === 'investor';
+  useEffect(() => {
+    if (isInvestor) {
+      setActions(
+        <button
+          type="submit"
+          form="soft-circle-form"
+          className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm shadow-lg shadow-primary/20"
+        >
+          {myCommitment ? 'Update Commitment' : 'Commit Interest'}
+        </button>
+      );
+    }
+    return () => setActions(null);
+  }, [isInvestor, myCommitment, setActions]);
+
+  if (!project || !user) return null;
 
   const totalCommitted = commitments.reduce((sum: number, c: Doc<'soft_circles'>) => sum + c.amount, 0);
   const percentFunded = Math.min(100, Math.round((totalCommitted / project.fundingGoal) * 100));
@@ -42,6 +61,7 @@ export default function SoftCirclesPage() {
       amount: Number(amount),
     });
     setCommitted(true);
+
   };
 
   return (
@@ -88,7 +108,7 @@ export default function SoftCirclesPage() {
                 ? 'You have already expressed interest. You can update your committed amount below.' 
                 : 'Indicate your interest in this round. This is non-binding but helps the founder gauge demand.'}
             </p>
-            <form onSubmit={handleCommit} className="flex gap-4">
+            <form id="soft-circle-form" onSubmit={handleCommit} className="flex gap-4">
               <div className="relative flex-1">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input

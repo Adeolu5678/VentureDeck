@@ -8,6 +8,7 @@ import { Upload, ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { Id } from '@convex/_generated/dataModel';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useBottomNav } from '@/context/BottomNavContext';
 
 export default function EditProjectPage() {
   const router = useRouter();
@@ -16,7 +17,9 @@ export default function EditProjectPage() {
 
   const project = useQuery(api.projects.get, { id: projectId });
   const updateProject = useMutation(api.projects.update);
+
   const generateUploadUrl = useAction(api.fileStorage.generateUploadUrl);
+  const { setActions } = useBottomNav();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -47,7 +50,23 @@ export default function EditProjectPage() {
       });
       setIsLoading(false);
     }
+
   }, [project]);
+
+  useEffect(() => {
+    setActions(
+      <button
+        type="submit"
+        form="edit-project-form"
+        disabled={isSubmitting}
+        className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm shadow-lg shadow-primary/20 disabled:opacity-50"
+      >
+        {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+        Save Changes
+      </button>
+    );
+    return () => setActions(null);
+  }, [isSubmitting, setActions]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -129,7 +148,7 @@ export default function EditProjectPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-muted shadow-xl border border-border space-y-8">
+        <form id="edit-project-form" onSubmit={handleSubmit} className="bg-muted shadow-xl border border-border space-y-8">
           
           {/* Essentials Section */}
           <div className="space-y-6">

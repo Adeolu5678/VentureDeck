@@ -13,6 +13,7 @@ export default function MatchmakingWidget() {
             <Sparkles className="w-6 h-6" />
           </div>
           <h2 className="text-2xl font-bold text-white">AI Deal Flow</h2>
+          <span className="bg-white/10 text-white text-xs px-2 py-1 rounded-full border border-white/20">Coming Soon</span>
         </div>
         
         <p className="text-slate-300 mb-6 max-w-xl text-lg leading-relaxed">

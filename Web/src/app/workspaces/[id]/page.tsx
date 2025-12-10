@@ -11,6 +11,7 @@ import { Send, User, Hash, Plus, Lock, X, Link as LinkIcon } from 'lucide-react'
 import MemberMenu from '@/components/MemberMenu';
 import ChannelMenu from '@/components/ChannelMenu';
 import { toast } from 'sonner';
+import { useBottomNav } from '@/context/BottomNavContext';
 
 interface Channel {
   _id: Id<'conversations'>;
@@ -26,6 +27,7 @@ export default function WorkspacePage() {
   
   const user = useQuery(api.users.getCurrentUser);
   const workspace = useQuery(api.workspaces.get, { id: workspaceId });
+  const { setActions } = useBottomNav();
 
   const channels = useQuery(api.conversations.listChannels, { workspaceId }) as Channel[] | undefined;
   
@@ -59,6 +61,42 @@ export default function WorkspacePage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (!workspace) return;
+    const isOwner = workspace.members.includes(user?._id || '' as Id<'users'>) && workspace.members[0] === user?._id;
+
+    if (isOwner) {
+      setActions(
+        <button 
+          onClick={async () => {
+            try {
+              const code = await generateInviteCode({ workspaceId });
+              const url = `${window.location.origin}/invite/${code}`;
+              await navigator.clipboard.writeText(url);
+              toast.success('Invite link copied');
+            } catch {
+              toast.error('Failed to generate link');
+            }
+          }}
+          className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center text-sm"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Invite
+        </button>
+      );
+    } else {
+      setActions(
+        <Link 
+          href={`/projects/${workspace.projectId}`}
+          className="flex-1 py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm"
+        >
+          View Project
+        </Link>
+      );
+    }
+    return () => setActions(null);
+  }, [workspace, user, generateInviteCode, workspaceId, setActions]);
 
   const applications = useQuery(api.applications.listByProject, workspace ? { projectId: workspace.projectId } : "skip") || [];
   const pendingApplications = applications.filter(app => app.status === 'pending' || app.status === 'interviewing');
@@ -322,13 +360,33 @@ function MemberItem({ memberId, workspaceId, projectId, isCurrentUser, isFounder
   workspaceRoles?: { userId: Id<'users'>, role: string }[]
 }) {
   const user = useQuery(api.users.getUser, { id: memberId });
+  const createDirectMessage = useMutation(api.conversations.getOrCreateWorkspaceDirectMessage);
+  const router = useRouter();
+
   if (!user) return null;
 
   const role = workspaceRoles?.find(r => r.userId === memberId)?.role || 'Member';
 
+  const handleMemberClick = async () => {
+    if (isCurrentUser) return;
+    try {
+      const conversationId = await createDirectMessage({
+        participantId: memberId,
+        workspaceId,
+      });
+      router.push(`/conversations/${conversationId}`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to start conversation');
+    }
+  };
+
   return (
-    <div className="flex items-center justify-between px-2 py-1.5 text-slate-300 text-sm hover:bg-slate-800/50 rounded group">
-      <Link href={`/users/${user._id}`} className="flex items-center gap-2 flex-1 truncate">
+    <div 
+      onClick={handleMemberClick}
+      className={`flex items-center justify-between px-2 py-1.5 text-slate-300 text-sm hover:bg-slate-800/50 rounded group ${!isCurrentUser ? 'cursor-pointer' : ''}`}
+    >
+      <div className="flex items-center gap-2 flex-1 truncate">
         <div className={`w-2 h-2 rounded-full ${user.role === 'entrepreneur' ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
         <div className="flex flex-col min-w-0">
           <span className="truncate font-medium text-slate-200">
@@ -337,9 +395,9 @@ function MemberItem({ memberId, workspaceId, projectId, isCurrentUser, isFounder
           </span>
           <span className="text-[10px] text-slate-500 truncate">{role}</span>
         </div>
-      </Link>
+      </div>
       
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
           <MemberMenu 
             memberId={memberId}
             workspaceId={workspaceId}
