@@ -30,6 +30,7 @@
   --animate-fade-in: fade-in 0.5s ease-out;
   --animate-slide-up: slide-up 0.5s ease-out;
   --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
 
   @keyframes fade-in {
     0% {
@@ -49,45 +50,55 @@
       opacity: 1;
     }
   }
+  @keyframes shimmer {
+    from {
+      background-position: 0 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
 }
 
 :root {
-  /* HSL Values for Opacity Support */
-  /* Background: Rich Black #121212 */
-  --background: hsl(0 0% 7%); 
-  /* Foreground: Slate 50 */
+  /* Premium Dark Mode Palette */
+
+  /* Rich Black Background with slight blue tint for depth */
+  --background: hsl(222 47% 4%);
+
+  /* Bright White Foreground */
   --foreground: hsl(210 40% 98%);
 
-  /* Card: Glassmorphic surface */
-  --card: hsl(0 0% 7% / 0.6);
+  /* Glassmorphic Card Surface - Darker and more opaque for readability */
+  --card: hsl(222 47% 6% / 0.7);
   --card-foreground: hsl(210 40% 98%);
 
-  --popover: hsl(0 0% 7%);
+  --popover: hsl(222 47% 6%);
   --popover-foreground: hsl(210 40% 98%);
 
-  /* Primary: Electric Blue #00A3FF */
-  --primary: hsl(202 100% 50%);
-  --primary-foreground: hsl(210 40% 98%);
+  /* Primary: Vibrant Electric Blue */
+  --primary: hsl(217 91% 60%);
+  --primary-foreground: hsl(222 47% 4%);
 
-  /* Secondary: White (High Contrast) */
-  --secondary: hsl(0 0% 100%);
-  --secondary-foreground: hsl(0 0% 7%);
+  /* Secondary: Subtle Cool Grey */
+  --secondary: hsl(217 19% 27%);
+  --secondary-foreground: hsl(210 40% 98%);
 
-  /* Muted: Slate 900 equivalent for borders/subtle backgrounds */
-  --muted: hsl(217 33% 17%);
+  /* Muted: Deep Slate */
+  --muted: hsl(217 33% 12%);
   --muted-foreground: hsl(215 20% 65%);
 
-  /* Accent: Creative Magenta #E000FF (for moments of delight) */
-  --accent: hsl(293 100% 50%);
+  /* Accent: Neon Purple/Pink for highlights */
+  --accent: hsl(280 100% 65%);
   --accent-foreground: hsl(210 40% 98%);
 
-  --destructive: hsl(0 62.8% 30.6%);
+  --destructive: hsl(0 84% 60%);
   --destructive-foreground: hsl(210 40% 98%);
 
-  /* Border: Ultra-subtle white/10 */
-  --border: hsl(0 0% 100% / 0.1);
+  /* Borders: Very subtle */
+  --border: hsl(217 33% 20%);
   --input: hsl(217 33% 17%);
-  --ring: hsl(202 100% 50%);
+  --ring: hsl(217 91% 60%);
 
   --radius: 0.75rem;
 }
@@ -95,35 +106,53 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Arial, Helvetica, sans-serif; /* Setup for later font change */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-image:
+    radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+  background-attachment: fixed;
 }
 
 /* Glassmorphism Utilities */
 @utility glass-panel {
-  @apply bg-[#1e1e1e]/70 backdrop-blur-xl border border-white/10 shadow-xl;
+  @apply bg-[#0a0f1c]/60 backdrop-blur-xl border border-white/5 shadow-2xl;
 }
 
 @utility glass-button {
-  @apply bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-sm transition-all active:scale-95;
+  @apply bg-white/5 hover:bg-white/10 border border-white/5 backdrop-blur-sm transition-all active:scale-95 cursor-pointer;
 }
 
 @utility text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-[#00A3FF] via-[#E000FF] to-[#00A3FF];
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 animate-shimmer bg-[length:200%_100%];
 }
 
-/* Custom Scrollbar */
+/* Premium Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(217 33% 17%);
-  border-radius: 4px;
+  background: hsl(217 33% 25%);
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(215 20% 65%);
+  background: hsl(217 33% 35%);
+}
+
+/* Noise Texture Overlay */
+.bg-noise {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
