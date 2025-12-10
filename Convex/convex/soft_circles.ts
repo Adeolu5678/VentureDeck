@@ -25,17 +25,43 @@ export const commit = mutation({
       .filter((q) => q.eq(q.field('projectId'), args.projectId))
       .first();
 
+    let result;
     if (existing) {
-      throw new Error('Already committed to this project');
+      // Update existing commitment
+      await ctx.db.patch(existing._id, {
+        amount: args.amount,
+        updatedAt: Date.now(),
+      });
+      result = existing._id;
+    } else {
+      // Create new commitment
+      result = await ctx.db.insert('soft_circles', {
+        projectId: args.projectId,
+        investorId: user._id,
+        amount: args.amount,
+        status: 'interested',
+        createdAt: Date.now(),
+      });
     }
 
-    return await ctx.db.insert('soft_circles', {
-      projectId: args.projectId,
-      investorId: user._id,
-      amount: args.amount,
-      status: 'interested',
-      createdAt: Date.now(),
-    });
+    // Notify Project Owner (only if new or significantly changed? For now, always notify on update too)
+    const project = await ctx.db.get(args.projectId);
+    if (project) {
+      const investorName = user.displayName || user.firstName || user.username || 'An investor';
+      const action = existing ? 'updated their commitment' : 'committed';
+      
+      await ctx.db.insert('notifications', {
+        userId: project.ownerId,
+        type: 'soft_circle_committed',
+        title: existing ? 'Soft Circle Updated' : 'New Soft Circle Commitment',
+        message: `${investorName} ${action} to $${args.amount.toLocaleString()} for ${project.title}`,
+        link: `/projects/${args.projectId}/soft-circles`,
+        read: false,
+        createdAt: Date.now(),
+      });
+    }
+
+    return result;
   },
 });
 

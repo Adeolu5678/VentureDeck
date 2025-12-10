@@ -4,10 +4,14 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { UserButton } from '@clerk/nextjs';
 import { useState, useEffect } from 'react';
-import { TagInput } from '@/components/ui/TagInput';
 import { Toggle } from '@/components/ui/Toggle';
 import { User, Bell, Shield, Briefcase, Sparkles } from 'lucide-react';
 import Image from 'next/image';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
+import { toast } from 'sonner';
 
 interface SettingsUser {
   clerkId: string;
@@ -15,101 +19,120 @@ interface SettingsUser {
   username: string;
   firstName: string;
   lastName: string;
+  displayName?: string;
   professionalBio?: string;
   linkedinUrl?: string;
+  githubUrl?: string;
   skills?: string[];
   interests?: string[];
   notificationPreferences?: { email: boolean; push: boolean };
   privacySettings?: { profileVisibility: "public" | "private" };
   avatarStorageId?: string;
   avatarUrl?: string;
-}
-
-interface Certification {
+  isAdmin?: boolean;
   _id: string;
-  title: string;
-  status: string;
 }
 
 export default function SettingsPage() {
   const user = useQuery(api.users.getCurrentUser) as SettingsUser | undefined;
-  const updateUser = useMutation(api.users.createOrUpdateUser);
+  const createOrUpdateUser = useMutation(api.users.createOrUpdateUser);
   const generateUploadUrl = useMutation(api.users.generateUploadUrl);
   
   const [activeTab, setActiveTab] = useState<'profile' | 'account' | 'privacy'>('profile');
   const [isSaving, setIsSaving] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Form State
-  const [bio, setBio] = useState('');
-  const [linkedin, setLinkedin] = useState('');
-  const [skills, setSkills] = useState<string[]>([]);
-  const [interests, setInterests] = useState<string[]>([]);
+  const [formData, setFormData] = useState({
+    displayName: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    professionalBio: '',
+    linkedinUrl: '',
+    githubUrl: '',
+    skills: '',
+    interests: '',
+  });
+
   const [notifications, setNotifications] = useState({ email: true, push: true });
   const [privacy, setPrivacy] = useState<{ profileVisibility: 'public' | 'private' }>({ profileVisibility: 'public' });
-  const [avatarStorageId, setAvatarStorageId] = useState<string | undefined>(undefined);
-  const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
 
   // Load initial data
   useEffect(() => {
     if (user) {
-      setBio(user.professionalBio || '');
-      setLinkedin(user.linkedinUrl || '');
-      setSkills(user.skills || []);
-      setInterests(user.interests || []);
+      setFormData({
+        displayName: user.displayName || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        professionalBio: user.professionalBio || '',
+        linkedinUrl: user.linkedinUrl || '',
+        githubUrl: user.githubUrl || '',
+        skills: user.skills?.join(', ') || '',
+        interests: user.interests?.join(', ') || '',
+      });
       setNotifications(user.notificationPreferences || { email: true, push: true });
       setPrivacy(user.privacySettings || { profileVisibility: 'public' });
-      setAvatarStorageId(user.avatarStorageId);
-      setPreviewUrl(user.avatarUrl);
+      if (user.avatarUrl) {
+        setPreviewUrl(user.avatarUrl);
+      }
     }
   }, [user]);
 
-  if (!user) return null;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
     try {
-      // Create local preview
-      setPreviewUrl(URL.createObjectURL(file));
-
-      // Get upload URL
       const postUrl = await generateUploadUrl();
-      
-      // Upload file
       const result = await fetch(postUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
         body: file,
       });
       const { storageId } = await result.json();
-      
-      setAvatarStorageId(storageId);
+
+      await createOrUpdateUser({
+          username: user.username,
+          email: user.email,
+          avatarStorageId: storageId,
+      });
+      toast.success('Profile picture updated');
     } catch (error) {
-      console.error("Failed to upload image:", error);
+      console.error(error);
+      toast.error('Failed to upload image');
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
     setIsSaving(true);
     try {
-      await updateUser({
-        clerkId: user.clerkId,
-        email: user.email,
+      await createOrUpdateUser({
         username: user.username,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        professionalBio: bio,
-        linkedinUrl: linkedin,
-        skills,
-        interests,
+        email: formData.email,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        displayName: formData.displayName,
+        professionalBio: formData.professionalBio,
+        linkedinUrl: formData.linkedinUrl,
+        githubUrl: formData.githubUrl,
+        skills: formData.skills.split(',').map(s => s.trim()).filter(Boolean),
+        interests: formData.interests.split(',').map(s => s.trim()).filter(Boolean),
         notificationPreferences: notifications,
         privacySettings: privacy,
-        avatarStorageId,
       });
-      // Optional: Add toast notification here
+      toast.success('Profile updated successfully');
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      console.error(error);
+      toast.error('Failed to update profile');
     } finally {
       setIsSaving(false);
     }
@@ -121,11 +144,13 @@ export default function SettingsPage() {
     { id: 'privacy', label: 'Privacy', icon: Shield },
   ] as const;
 
+  if (!user) return null;
+
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6 pb-24">
       <div className="max-w-4xl mx-auto">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-400">
             Settings
           </h1>
           <p className="text-slate-400 mt-2">Manage your profile and preferences</p>
@@ -140,7 +165,7 @@ export default function SettingsPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   activeTab === tab.id
-                    ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-600/20'
+                    ? 'bg-primary/10 text-primary border border-primary/20'
                     : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
                 }`}
               >
@@ -157,13 +182,13 @@ export default function SettingsPage() {
                 {/* Basic Info */}
                 <section className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm">
                   <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                    <Briefcase size={20} className="text-indigo-400" />
+                    <Briefcase size={20} className="text-primary" />
                     Professional Info
                   </h2>
                   
                   <div className="flex items-start gap-6 mb-8">
                     <div className="relative group">
-                      <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-slate-800 ring-2 ring-indigo-500/20 group-hover:ring-indigo-500/50 transition-all">
+                      <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-slate-800 ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all">
                         {previewUrl ? (
                           <Image src={previewUrl} alt="Profile" fill className="object-cover" />
                         ) : (
@@ -184,73 +209,120 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1.5">Professional Bio</label>
-                      <textarea
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all h-32 resize-none"
-                        placeholder="Tell us about your experience..."
-                        value={bio}
-                        onChange={(e) => setBio(e.target.value)}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="displayName">Display Name</Label>
+                      <Input
+                        id="displayName"
+                        name="displayName"
+                        value={formData.displayName}
+                        onChange={handleChange}
+                        placeholder="How you want to appear"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="username">Username</Label>
+                      <Input
+                        id="username"
+                        value={user.username}
+                        disabled
+                        className="bg-slate-900/50 text-slate-500"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1.5">LinkedIn URL</label>
-                      <input
-                        type="text"
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="professionalBio">Professional Bio</Label>
+                      <Textarea
+                        id="professionalBio"
+                        name="professionalBio"
+                        value={formData.professionalBio}
+                        onChange={handleChange}
+                        rows={4}
+                        placeholder="Tell us about yourself..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
+                      <Input
+                        id="linkedinUrl"
+                        name="linkedinUrl"
+                        value={formData.linkedinUrl}
+                        onChange={handleChange}
                         placeholder="https://linkedin.com/in/username"
-                        value={linkedin}
-                        onChange={(e) => setLinkedin(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="githubUrl">GitHub URL</Label>
+                      <Input
+                        id="githubUrl"
+                        name="githubUrl"
+                        value={formData.githubUrl}
+                        onChange={handleChange}
+                        placeholder="https://github.com/username"
                       />
                     </div>
                   </div>
                 </section>
 
-                {/* Skills & Interests */}
                 <section className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm">
                   <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                     <Sparkles size={20} className="text-amber-400" />
                     Skills & Interests
                   </h2>
-                  
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1.5">Skills</label>
-                      <TagInput
-                        tags={skills}
-                        onTagsChange={setSkills}
-                        placeholder="Add skills (e.g. React, Marketing)..."
+                  <div className="grid grid-cols-1 gap-6">
+                     <div className="space-y-2">
+                      <Label htmlFor="skills">Skills (comma separated)</Label>
+                      <Input
+                        id="skills"
+                        name="skills"
+                        value={formData.skills}
+                        onChange={handleChange}
+                        placeholder="React, Node.js, Design..."
                       />
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1.5">Interests</label>
-                      <TagInput
-                        tags={interests}
-                        onTagsChange={setInterests}
-                        placeholder="Add interests (e.g. Fintech, AI)..."
+                    <div className="space-y-2">
+                      <Label htmlFor="interests">Interests (comma separated)</Label>
+                      <Input
+                        id="interests"
+                        name="interests"
+                        value={formData.interests}
+                        onChange={handleChange}
+                        placeholder="AI, Blockchain, SaaS..."
                       />
                     </div>
-                  </div>
-                </section>
-
-                {/* Certifications */}
-                <CertificationSection />
-              </div>
-            )}
-
-            {activeTab === 'account' && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <section className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm">
-                  <h2 className="text-lg font-semibold mb-4">Account Management</h2>
-                  <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
-                    <div>
-                      <p className="font-medium text-slate-200">Clerk Profile</p>
-                      <p className="text-sm text-slate-500">Manage email, password, and security</p>
-                    </div>
-                    <UserButton afterSignOutUrl="/" />
                   </div>
                 </section>
 
@@ -279,6 +351,28 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </section>
+                
+                {/* Save Button */}
+                <div className="flex justify-end pt-4">
+                  <Button onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'account' && (
+               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <section className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm">
+                  <h2 className="text-lg font-semibold mb-4">Account Management</h2>
+                  <div className="space-y-6">
+                    <div>
+                      <p className="font-medium text-slate-200">Clerk Profile</p>
+                      <p className="text-sm text-slate-500 mb-4">Manage email, password, and security settings via Clerk.</p>
+                      <UserButton afterSignOutUrl="/" />
+                    </div>
+                  </div>
+                </section>
               </div>
             )}
 
@@ -301,7 +395,7 @@ export default function SettingsPage() {
                         onClick={() => setPrivacy({ profileVisibility: 'public' })}
                         className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                           privacy.profileVisibility === 'public'
-                            ? 'bg-indigo-600 text-white shadow-sm'
+                            ? 'bg-primary text-white shadow-sm'
                             : 'text-slate-400 hover:text-slate-200'
                         }`}
                       >
@@ -311,7 +405,7 @@ export default function SettingsPage() {
                         onClick={() => setPrivacy({ profileVisibility: 'private' })}
                         className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                           privacy.profileVisibility === 'private'
-                            ? 'bg-indigo-600 text-white shadow-sm'
+                            ? 'bg-primary text-white shadow-sm'
                             : 'text-slate-400 hover:text-slate-200'
                         }`}
                       >
@@ -322,134 +416,9 @@ export default function SettingsPage() {
                 </section>
               </div>
             )}
-
-            {/* Save Button */}
-            <div className="sticky bottom-24 flex justify-end pt-4">
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSaving ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Changes'
-                )}
-              </button>
-            </div>
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function CertificationSection() {
-  const generateUploadUrl = useMutation(api.users.generateUploadUrl);
-  const createCertification = useMutation(api.certifications.create);
-  const myCertifications = useQuery(api.certifications.list, {}) || [];
-  
-  const [title, setTitle] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !title) {
-      if (!title) alert('Please enter a title first');
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const postUrl = await generateUploadUrl();
-      const result = await fetch(postUrl, {
-        method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      const { storageId } = await result.json();
-
-      await createCertification({
-        title,
-        imageUrl: storageId,
-      });
-      
-      setTitle('');
-      alert('Certification uploaded successfully!');
-    } catch (error) {
-      console.error("Failed to upload certification:", error);
-      alert('Failed to upload certification');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  return (
-    <section className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm">
-      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-        <Shield size={20} className="text-emerald-400" />
-        Certifications
-      </h2>
-
-      <div className="space-y-6">
-        <div className="flex gap-4 items-end">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">Certification Title</label>
-            <input
-              type="text"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none"
-              placeholder="e.g. AWS Solutions Architect"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
-          <div className="relative">
-            <input
-              type="file"
-              id="cert-upload"
-              className="hidden"
-              accept="image/*"
-              onChange={handleUpload}
-              disabled={isUploading || !title}
-            />
-            <label
-              htmlFor="cert-upload"
-              className={`px-4 py-3 rounded-xl text-sm font-medium cursor-pointer flex items-center gap-2 transition-colors ${
-                isUploading || !title 
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-              }`}
-            >
-              {isUploading ? 'Uploading...' : 'Upload Certificate'}
-            </label>
-          </div>
-        </div>
-
-        {myCertifications.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-slate-400">Your Certifications</h3>
-            <div className="grid gap-3">
-              {myCertifications.map((cert: Certification) => (
-                <div key={cert._id} className="flex items-center justify-between p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-medium text-slate-200">{cert.title}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full border ${
-                    cert.status === 'verified' 
-                      ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' 
-                      : cert.status === 'rejected'
-                      ? 'bg-red-900/30 text-red-400 border-red-800'
-                      : 'bg-amber-900/30 text-amber-400 border-amber-800'
-                  }`}>
-                    {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
   );
 }

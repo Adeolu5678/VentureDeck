@@ -5,7 +5,7 @@ import { api } from '@convex/_generated/api';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Id } from '@convex/_generated/dataModel';
-import { CheckCircle, Circle, DollarSign, Plus, User } from 'lucide-react';
+import { DollarSign, Plus, User } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BountiesPage() {
@@ -61,7 +61,7 @@ export default function BountiesPage() {
           {isOwner && (
             <button
               onClick={() => setIsCreating(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium flex items-center gap-2"
+              className="px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium flex items-center gap-2"
             >
               <Plus className="w-4 h-4" /> Post Bounty
             </button>
@@ -76,7 +76,7 @@ export default function BountiesPage() {
                   <h3 className="font-bold text-lg">{bounty.title}</h3>
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                     bounty.status === 'open' ? 'bg-emerald-500/10 text-emerald-400' :
-                    bounty.status === 'assigned' ? 'bg-indigo-500/10 text-indigo-400' :
+                    bounty.status === 'assigned' ? 'bg-primary/10 text-primary' :
                     'bg-slate-800 text-slate-400'
                   }`}>
                     {bounty.status.toUpperCase()}
@@ -127,7 +127,7 @@ export default function BountiesPage() {
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:border-primary outline-none"
                     required
                   />
                 </div>
@@ -136,7 +136,7 @@ export default function BountiesPage() {
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none h-24"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:border-primary outline-none h-24"
                     required
                   />
                 </div>
@@ -147,7 +147,7 @@ export default function BountiesPage() {
                     value={reward}
                     onChange={(e) => setReward(e.target.value)}
                     placeholder="e.g. $500 or 0.5% Equity"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:border-primary outline-none"
                     required
                   />
                 </div>
@@ -161,7 +161,7 @@ export default function BountiesPage() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium"
+                    className="flex-1 py-2 bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium"
                   >
                     Post Bounty
                   </button>

@@ -54,20 +54,64 @@ export const list = query({
   },
 });
 
-// Verify a certification (Admin only - simplified for MVP)
-export const verify = mutation({
-  args: {
-    id: v.id('certifications'),
-    status: v.union(v.literal('verified'), v.literal('rejected')),
+// List pending certifications (Admin only)
+export const listPending = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!user || !user.isAdmin) return [];
+
+    return await ctx.db
+      .query('certifications')
+      .withIndex('by_status', (q) => q.eq('status', 'pending'))
+      .collect();
   },
+});
+
+// Verify a certification (Admin only)
+export const verify = mutation({
+  args: { id: v.id('certifications') },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
-    // In a real app, check for admin role here.
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!user || !user.isAdmin) throw new Error('Unauthorized');
     
     await ctx.db.patch(args.id, {
-      status: args.status,
+      status: 'verified',
+      verifiedAt: Date.now(),
+    });
+  },
+});
+
+// Reject a certification (Admin only)
+export const reject = mutation({
+  args: { id: v.id('certifications') },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!user || !user.isAdmin) throw new Error('Unauthorized');
+    
+    await ctx.db.patch(args.id, {
+      status: 'rejected',
       verifiedAt: Date.now(),
     });
   },

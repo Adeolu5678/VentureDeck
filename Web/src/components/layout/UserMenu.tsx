@@ -1,9 +1,10 @@
 'use client';
 
-import { useAuth, useUser, SignOutButton } from '@clerk/nextjs';
+import { useUser, SignOutButton } from '@clerk/nextjs';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
-import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, Bell, MessageSquare } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 
@@ -49,11 +50,14 @@ export function UserMenu() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 p-1.5 pr-3 rounded-full hover:bg-white/5 transition-colors border border-transparent hover:border-white/10"
       >
-        <img
-          src={avatarUrl}
-          alt={displayName || 'User'}
-          className="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-500/20"
-        />
+        <div className="relative w-8 h-8">
+          <Image
+            src={avatarUrl || ''}
+            alt={displayName || 'User'}
+            fill
+            className="rounded-full object-cover ring-2 ring-indigo-500/20"
+          />
+        </div>
         <span className="text-sm font-medium text-slate-200 hidden md:block">
           {displayName}
         </span>
@@ -75,6 +79,15 @@ export function UserMenu() {
             <User className="w-4 h-4" />
             Profile
           </Link>
+
+          <Link
+            href="/notifications"
+            className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+            onClick={() => setIsOpen(false)}
+          >
+            <Bell className="w-4 h-4" />
+            Notifications
+          </Link>
           
           <Link
             href="/settings"
@@ -83,6 +96,15 @@ export function UserMenu() {
           >
             <Settings className="w-4 h-4" />
             Settings
+          </Link>
+
+          <Link
+            href="/conversations"
+            className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+            onClick={() => setIsOpen(false)}
+          >
+            <MessageSquare className="w-4 h-4" />
+            Conversations
           </Link>
           
           <div className="border-t border-white/5 my-1"></div>

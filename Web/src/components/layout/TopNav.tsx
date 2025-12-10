@@ -17,7 +17,7 @@ export function TopNav() {
   if (isLoaded && !isSignedIn) return null;
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-slate-950/80 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/50">
+    <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-slate-950/30 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/30">
       <div className="flex h-16 items-center justify-between px-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-2">
           <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">

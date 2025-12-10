@@ -3,14 +3,14 @@ import Link from "next/link";
 
 export default function Page() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 relative overflow-hidden selection:bg-indigo-500/30">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background selection:bg-primary/30">
       {/* Background Effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950 pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] pointer-events-none mix-blend-overlay" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-background to-background pointer-events-none" />
+
       
       <div className="z-10 flex flex-col items-center gap-8 w-full max-w-md px-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-300 border border-white/10">
+          <div className="w-12 h-12 bg-gradient-to-br from-primary to-violet-600 shadow-primary/20 border-border/10">
             <span className="text-white font-bold text-2xl">V</span>
           </div>
           <span className="text-3xl font-bold text-white tracking-tight">
@@ -24,15 +24,15 @@ export default function Page() {
               rootBox: "w-full",
               card: "bg-transparent shadow-none w-full p-6",
               headerTitle: "text-white text-2xl font-bold tracking-tight",
-              headerSubtitle: "text-slate-400 text-base",
-              socialButtonsBlockButton: "bg-slate-800/50 border border-white/10 text-white hover:bg-slate-800 hover:border-white/20 transition-all duration-200 rounded-xl",
-              socialButtonsBlockButtonText: "text-white font-medium",
-              dividerLine: "bg-white/10",
-              dividerText: "text-slate-500",
-              formFieldLabel: "text-slate-300 font-medium",
-              formFieldInput: "bg-slate-950/50 border border-white/10 text-white focus:border-indigo-500 focus:ring-indigo-500/20 transition-all rounded-xl py-3",
-              footerActionLink: "text-indigo-400 hover:text-indigo-300 font-medium",
-              formButtonPrimary: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/20 transition-all duration-200",
+              headerSubtitle: "text-muted-foreground text-base",
+              socialButtonsBlockButton: "bg-muted/50 border border-border/10 text-foreground hover:bg-muted hover:border-border/20 transition-all duration-200 rounded-xl",
+              socialButtonsBlockButtonText: "text-foreground font-medium",
+              dividerLine: "bg-border/10",
+              dividerText: "text-muted-foreground",
+              formFieldLabel: "text-muted-foreground font-medium",
+              formFieldInput: "bg-background/50 border border-border/10 text-foreground focus:border-primary focus:ring-primary/20 transition-all rounded-xl py-3",
+              footerActionLink: "text-primary hover:text-primary/80 font-medium",
+              formButtonPrimary: "bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-500 text-primary-foreground font-bold py-3.5 rounded-xl shadow-lg shadow-primary/20 transition-all duration-200",
               footer: "hidden",
             },
             layout: {

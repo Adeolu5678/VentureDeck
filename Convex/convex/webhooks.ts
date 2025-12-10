@@ -1,5 +1,5 @@
 import { action, ActionCtx } from './_generated/server';
-import { api } from './_generated/api';
+import { api, internal } from './_generated/api';
 import { v } from 'convex/values';
 import { Webhook } from 'svix';
 import { WebhookEvent, UserJSON } from '@clerk/clerk-sdk-node';
@@ -109,7 +109,7 @@ async function handleUserCreated(ctx: ActionCtx, userData: UserJSON) {
     // Generate username if not provided
     const userUsername = username || generateUsernameFromEmail(primaryEmail);
 
-    await ctx.runMutation(api.users.createOrUpdateUser, {
+    await ctx.runMutation(internal.users.internalUpdateUser, {
       clerkId,
       username: userUsername,
       email: primaryEmail,
@@ -145,7 +145,7 @@ async function handleUserUpdated(ctx: ActionCtx, userData: UserJSON) {
     // Use existing username or generate new one
     const userUsername = username || generateUsernameFromEmail(primaryEmail);
 
-    await ctx.runMutation(api.users.createOrUpdateUser, {
+    await ctx.runMutation(internal.users.internalUpdateUser, {
       clerkId,
       username: userUsername,
       email: primaryEmail,

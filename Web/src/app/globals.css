@@ -53,33 +53,41 @@
 
 :root {
   /* HSL Values for Opacity Support */
-  --background: hsl(222 47% 11%); /* Deep Slate #0f172a */
-  --foreground: hsl(210 40% 98%); /* Slate 50 */
+  /* Background: Rich Black #121212 */
+  --background: hsl(0 0% 7%); 
+  /* Foreground: Slate 50 */
+  --foreground: hsl(210 40% 98%);
 
-  --card: hsl(222 47% 11% / 0.6);
+  /* Card: Glassmorphic surface */
+  --card: hsl(0 0% 7% / 0.6);
   --card-foreground: hsl(210 40% 98%);
 
-  --popover: hsl(222 47% 11%);
+  --popover: hsl(0 0% 7%);
   --popover-foreground: hsl(210 40% 98%);
 
-  --primary: hsl(252 59% 50%); /* Indigo 600 */
+  /* Primary: Electric Blue #00A3FF */
+  --primary: hsl(202 100% 50%);
   --primary-foreground: hsl(210 40% 98%);
 
-  --secondary: hsl(161 94% 30%); /* Emerald 600 */
-  --secondary-foreground: hsl(210 40% 98%);
+  /* Secondary: White (High Contrast) */
+  --secondary: hsl(0 0% 100%);
+  --secondary-foreground: hsl(0 0% 7%);
 
-  --muted: hsl(217 33% 17%); /* Slate 900 */
-  --muted-foreground: hsl(215 20% 65%); /* Slate 400 */
+  /* Muted: Slate 900 equivalent for borders/subtle backgrounds */
+  --muted: hsl(217 33% 17%);
+  --muted-foreground: hsl(215 20% 65%);
 
-  --accent: hsl(252 59% 50%);
+  /* Accent: Creative Magenta #E000FF (for moments of delight) */
+  --accent: hsl(293 100% 50%);
   --accent-foreground: hsl(210 40% 98%);
 
   --destructive: hsl(0 62.8% 30.6%);
   --destructive-foreground: hsl(210 40% 98%);
 
-  --border: hsl(217 33% 17%);
+  /* Border: Ultra-subtle white/10 */
+  --border: hsl(0 0% 100% / 0.1);
   --input: hsl(217 33% 17%);
-  --ring: hsl(252 59% 50%);
+  --ring: hsl(202 100% 50%);
 
   --radius: 0.75rem;
 }
@@ -94,7 +102,7 @@ body {
 
 /* Glassmorphism Utilities */
 @utility glass-panel {
-  @apply bg-slate-900/40 backdrop-blur-xl border border-white/10 shadow-xl;
+  @apply bg-[#1e1e1e]/70 backdrop-blur-xl border border-white/10 shadow-xl;
 }
 
 @utility glass-button {
@@ -102,7 +110,7 @@ body {
 }
 
 @utility text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400;
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-[#00A3FF] via-[#E000FF] to-[#00A3FF];
 }
 
 /* Custom Scrollbar */
