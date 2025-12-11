@@ -108,7 +108,7 @@ export default function PublicProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-24">
+    <div className="min-h-screen text-foreground pb-24">
       {/* Premium Header Background */}
       <div className="relative h-64 bg-slate-900 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-slate-900 to-accent/20 animate-shimmer bg-[length:200%_100%]" />

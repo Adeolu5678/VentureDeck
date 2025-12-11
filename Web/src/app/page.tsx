@@ -11,7 +11,7 @@ export default function LandingPage() {
   const { isSignedIn } = useUser();
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden">
+    <div className="min-h-screen text-foreground overflow-hidden">
       {/* Background Noise & Gradient */}
       <div className="bg-noise" />
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background -z-10" />

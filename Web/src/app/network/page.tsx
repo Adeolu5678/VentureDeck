@@ -5,7 +5,7 @@ import { FriendsList } from "@/components/FriendsList";
 
 export default function NetworkPage() {
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen pb-20">
       <div className="relative pt-32 pb-12 px-6">
         <div className="max-w-7xl mx-auto">
           <PageHeader 

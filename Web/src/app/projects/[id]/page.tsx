@@ -116,7 +116,7 @@ export default function ProjectDetailPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-24">
+    <div className="min-h-screen text-foreground pb-24">
       {/* Immersive Header */}
       <div className="relative h-80 bg-slate-900 overflow-hidden">
          <div className="absolute inset-0 bg-gradient-to-t from-background via-slate-900/50 to-transparent z-10" />

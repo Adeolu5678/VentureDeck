@@ -78,7 +78,7 @@ export default function DashboardPage() {
   const isEntrepreneur = convexUser.role === 'entrepreneur';
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-24">
+    <div className="min-h-screen text-foreground pb-24">
       <div className="relative pt-12 px-6 max-w-7xl mx-auto">
         <PageHeader 
           title={`Welcome back, ${convexUser.firstName || convexUser.username}`}
