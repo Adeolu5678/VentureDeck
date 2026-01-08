@@ -15,7 +15,14 @@ export function PitchDeckViewer({ url, title = 'Pitch Deck' }: PitchDeckViewerPr
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Check if URL is a PDF or image
-  const isPdf = url.toLowerCase().endsWith('.pdf') || url.includes('storage.googleapis.com');
+  const isPdf = url.toLowerCase().endsWith('.pdf') || (() => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname === 'storage.googleapis.com';
+    } catch {
+      return false;
+    }
+  })();
   const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
 
   return (

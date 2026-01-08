@@ -4,7 +4,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { useState, useEffect, useCallback } from 'react';
 import { Id } from '@convex/_generated/dataModel';
-import { Briefcase, Shield, User, ThumbsUp, UserPlus, Check, Settings } from 'lucide-react';
+import { Briefcase, Shield, User, ThumbsUp, UserPlus, Check, Settings, Award } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
@@ -80,7 +80,8 @@ export default function PublicProfilePage() {
     try {
       await sendFriendRequest({ friendId: userId });
       toast.success('Friend request sent');
-    } catch {
+    } catch (e) {
+      console.error(e);
       toast.error('Failed to send friend request');
     }
   }, [sendFriendRequest, userId]);
@@ -152,7 +153,8 @@ export default function PublicProfilePage() {
       setRelationship('');
       setVouchText('');
       toast.success('Vouch submitted successfully');
-    } catch {
+    } catch (e) {
+      console.error(e);
       toast.error('Failed to submit vouch');
     }
   };
@@ -173,7 +175,7 @@ export default function PublicProfilePage() {
             {user.avatarUrl ? (
               <Image src={user.avatarUrl} alt="Avatar" fill className="object-cover" />
             ) : (
-              <span className="text-4xl font-bold text-slate-500">{user.username?.[0].toUpperCase()}</span>
+              <span className="text-4xl font-bold text-slate-500">{user.username?.[0]?.toUpperCase() || '?'}</span>
             )}
           </div>
           
@@ -259,7 +261,7 @@ export default function PublicProfilePage() {
           <TabButton 
             active={activeTab === 'certifications'} 
             onClick={() => setActiveTab('certifications')} 
-            icon={Shield} 
+            icon={Award} 
             label="Certifications" 
           />
         </div>
@@ -269,7 +271,7 @@ export default function PublicProfilePage() {
           {activeTab === 'about' && (
             <div className="grid md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="md:col-span-2 space-y-6">
-                <PremiumCard title="Professional Bio">
+                <PremiumCard>
                   <h3 className="text-lg font-bold text-white mb-4">Bio</h3>
                   <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">
                     {user.professionalBio || "No bio provided yet."}

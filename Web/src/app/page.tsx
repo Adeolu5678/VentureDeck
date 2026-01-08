@@ -332,22 +332,23 @@ export default function LandingPage() {
 
 function FeatureCard({ icon: Icon, title, description, delay }: { icon: React.ElementType, title: string, description: string, delay: number }) {
   return (
-    <motion.div
+    <PremiumCard 
+      glow 
+      className="h-full"
+      animated={true}
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
       viewport={{ once: true }}
     >
-      <PremiumCard glow className="h-full">
-        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
-          <Icon className="w-6 h-6 text-primary" />
-        </div>
-        <h3 className="text-xl font-display font-bold mb-3 text-white">{title}</h3>
-        <p className="text-muted-foreground leading-relaxed">
-          {description}
-        </p>
-      </PremiumCard>
-    </motion.div>
+      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
+        <Icon className="w-6 h-6 text-primary" />
+      </div>
+      <h3 className="text-xl font-display font-bold mb-3 text-white">{title}</h3>
+      <p className="text-muted-foreground leading-relaxed">
+        {description}
+      </p>
+    </PremiumCard>
   );
 }
 

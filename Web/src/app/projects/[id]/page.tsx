@@ -241,21 +241,21 @@ export default function ProjectDetailPage() {
                 {isOwner ? (
                   <>
                     {project.workspaceId && (
-                      <Link href={`/workspaces/${project.workspaceId}`}>
+                      <Link href={`/workspaces/${project.workspaceId}`} className="block">
                         <PremiumButton className="w-full" variant="primary">Go to Workspace</PremiumButton>
                       </Link>
                     )}
-                    <Link href={`/projects/${projectId}/edit`}>
+                    <Link href={`/projects/${projectId}/edit`} className="block">
                       <PremiumButton className="w-full" variant="secondary">Edit Project</PremiumButton>
                     </Link>
-                    <Link href={`/projects/${projectId}/legal`}>
+                    <Link href={`/projects/${projectId}/legal`} className="block">
                       <PremiumButton className="w-full" variant="ghost" leftIcon={<FileText className="w-4 h-4" />}>Legal Documents</PremiumButton>
                     </Link>
                   </>
                 ) : isMember ? (
                    <>
                     {project.workspaceId && (
-                      <Link href={`/workspaces/${project.workspaceId}`}>
+                      <Link href={`/workspaces/${project.workspaceId}`} className="block">
                          <PremiumButton className="w-full" variant="primary">Go to Workspace</PremiumButton>
                       </Link>
                     )}
@@ -286,7 +286,7 @@ export default function ProjectDetailPage() {
                     <PremiumButton onClick={handleContactFounder} className="w-full" variant="primary" leftIcon={<MessageSquare className="w-4 h-4" />}>
                       Contact Founder
                     </PremiumButton>
-                    <Link href={`/projects/${projectId}/soft-circles`}>
+                    <Link href={`/projects/${projectId}/soft-circles`} className="block">
                        <PremiumButton className="w-full" variant="gradient" leftIcon={<DollarSign className="w-4 h-4" />}>
                         Soft Circle
                       </PremiumButton>

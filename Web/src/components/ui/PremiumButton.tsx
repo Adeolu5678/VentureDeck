@@ -72,7 +72,7 @@ export function PremiumButton({
       transition={{ type: "spring", stiffness: 400, damping: 17 }}
       disabled={disabled || isLoading}
       className={cn(
-        "font-display font-bold inline-flex items-center justify-center",
+        "font-display font-bold inline-flex items-center justify-center group",
         "transition-all duration-300 relative overflow-hidden",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         variants[variant],

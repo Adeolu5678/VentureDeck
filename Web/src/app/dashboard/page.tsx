@@ -13,6 +13,7 @@ import { ActivityFeed } from '@/components/ActivityFeed';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PremiumCard } from '@/components/ui/PremiumCard';
 import { PremiumButton } from '@/components/ui/PremiumButton';
+import { useRef } from 'react';
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
@@ -273,6 +274,7 @@ function JoinedProjectsSection() {
 function InvestorDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Debounce search term
   useEffect(() => {
@@ -309,13 +311,14 @@ function InvestorDashboard() {
               </span>
             )}
           </h2>
-          <div className="relative group">
+          <div className="relative group" onClick={() => searchInputRef.current?.focus()}>
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
             <input 
               type="text" 
               placeholder="Search projects..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              ref={searchInputRef}
               className="pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-64 transition-all"
             />
           </div>
