@@ -66,26 +66,58 @@ export const setRole = mutation({
   },
 });
 
-// Set admin status (Internal/Dev tool - Secured)
-export const setAdmin = mutation({
+// Set admin status - Internal only (not callable from client)
+export const internalSetAdmin = internalMutation({
   args: { 
     userId: v.id('users'), 
     isAdmin: v.boolean(),
-    secret: v.string() 
   },
   handler: async (ctx, args) => {
-    // Environment variable for admin secret
-    const ADMIN_SECRET = process.env.ADMIN_SECRET;
-    
-    if (!ADMIN_SECRET) {
-      throw new Error("Admin secret not configured");
-    }
-    
-    if (args.secret !== ADMIN_SECRET) {
-      throw new Error("Invalid admin secret");
+    await ctx.db.patch(args.userId, { isAdmin: args.isAdmin });
+  },
+});
+
+// Delete/anonymize user data for GDPR compliance
+export const deleteUserData = internalMutation({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkId))
+      .unique();
+
+    if (!user) {
+      console.log(`User not found for deletion: ${args.clerkId}`);
+      return;
     }
 
-    await ctx.db.patch(args.userId, { isAdmin: args.isAdmin });
+    // Anonymize user data instead of hard delete to preserve referential integrity
+    await ctx.db.patch(user._id, {
+      email: `deleted-${user._id}@deleted.local`,
+      username: `deleted-user-${user._id.slice(-8)}`,
+      firstName: undefined,
+      lastName: undefined,
+      avatarUrl: undefined,
+      professionalBio: undefined,
+      linkedinUrl: undefined,
+      githubUrl: undefined,
+      skills: undefined,
+      interests: undefined,
+      displayName: undefined,
+      avatarStorageId: undefined,
+      updatedAt: Date.now(),
+    });
+
+    // Delete user's avatar from storage if exists
+    if (user.avatarStorageId) {
+      try {
+        await ctx.storage.delete(user.avatarStorageId as Id<"_storage">);
+      } catch (e) {
+        console.error('Failed to delete avatar:', e);
+      }
+    }
+
+    console.log(`User data anonymized: ${args.clerkId}`);
   },
 });
 
@@ -127,6 +159,88 @@ export const searchUsers = query({
         role: u.role,
         career: u.professionalBio,
       })),
+      total: filtered.length,
+    };
+  },
+});
+
+// List all users with optional filters (for network/discovery)
+export const listAll = query({
+  args: {
+    search: v.optional(v.string()),
+    role: v.optional(v.union(v.literal('entrepreneur'), v.literal('investor'))),
+    limit: v.optional(v.number()),
+    excludeSelf: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { search, role, limit = 50, excludeSelf = true } = args;
+    
+    const identity = await ctx.auth.getUserIdentity();
+    let currentUserId: Id<'users'> | null = null;
+    
+    if (identity && excludeSelf) {
+      const currentUser = await ctx.db
+        .query('users')
+        .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
+        .first();
+      currentUserId = currentUser?._id || null;
+    }
+
+    let users: Doc<'users'>[];
+    
+    if (search && search.trim().length > 0) {
+      // Use search index if query provided
+      users = await ctx.db
+        .query('users')
+        .withSearchIndex('search_username', (q) => q.search('username', search))
+        .take(limit * 2); // Fetch more to handle filtering
+    } else {
+      // Get all users ordered by creation date (newest first)
+      users = await ctx.db
+        .query('users')
+        .order('desc')
+        .take(limit * 2);
+    }
+
+    // Apply filters
+    const filtered = users.filter(user => {
+      // Exclude current user if requested
+      if (excludeSelf && currentUserId && user._id === currentUserId) return false;
+      // Filter by role if specified
+      if (role && user.role !== role) return false;
+      // Only include users with a role (completed onboarding)
+      if (!user.role) return false;
+      // Check privacy settings
+      if (user.privacySettings?.profileVisibility === 'private') return false;
+      return true;
+    }).slice(0, limit);
+
+    // Resolve avatar URLs from storage
+    const usersWithAvatars = await Promise.all(
+      filtered.map(async (user) => {
+        let avatarUrl = user.avatarUrl;
+        if (user.avatarStorageId) {
+          const url = await ctx.storage.getUrl(user.avatarStorageId);
+          if (url) avatarUrl = url;
+        }
+        return {
+          _id: user._id,
+          username: user.username,
+          displayName: user.displayName || (user.firstName && user.lastName 
+            ? `${user.firstName} ${user.lastName}` 
+            : user.firstName || user.username),
+          firstName: user.firstName,
+          lastName: user.lastName,
+          avatarUrl,
+          role: user.role,
+          professionalBio: user.professionalBio,
+          skills: user.skills,
+        };
+      })
+    );
+
+    return {
+      users: usersWithAvatars,
       total: filtered.length,
     };
   },
@@ -176,6 +290,45 @@ export const getUser = query({
   args: { id: v.id('users') },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id);
+  },
+});
+
+// Batch query to fetch multiple users at once - fixes N+1 query patterns
+export const getUsers = query({
+  args: { ids: v.array(v.id('users')) },
+  handler: async (ctx, args) => {
+    if (args.ids.length === 0) return [];
+    
+    // Use Promise.all to fetch all users in parallel
+    const users = await Promise.all(
+      args.ids.map(async (id) => {
+        const user = await ctx.db.get(id);
+        if (!user) return null;
+        
+        // Resolve avatar URL from storage if present
+        let avatarUrl = user.avatarUrl;
+        if (user.avatarStorageId) {
+          const url = await ctx.storage.getUrl(user.avatarStorageId);
+          if (url) avatarUrl = url;
+        }
+        
+        return {
+          _id: user._id,
+          username: user.username,
+          displayName: user.displayName || (user.firstName && user.lastName 
+            ? `${user.firstName} ${user.lastName}` 
+            : user.firstName || user.username),
+          firstName: user.firstName,
+          lastName: user.lastName,
+          avatarUrl,
+          role: user.role,
+          professionalBio: user.professionalBio,
+        };
+      })
+    );
+    
+    // Filter out nulls (users that don't exist)
+    return users.filter((u): u is NonNullable<typeof u> => u !== null);
   },
 });
 
@@ -364,5 +517,42 @@ export const internalUpdateUser = internalMutation({
   handler: async (ctx, args) => {
     // Trusted internal call - relies on 'internal' visibility
     return await upsertUser(ctx, args);
+  },
+});
+
+// Update investor thesis
+export const updateInvestorThesis = mutation({
+  args: {
+    investmentRange: v.optional(v.object({
+      min: v.number(),
+      max: v.number(),
+    })),
+    investorThesis: v.optional(v.object({
+      preferredIndustries: v.optional(v.array(v.string())),
+      preferredStages: v.optional(v.array(v.string())),
+      thesisDescription: v.optional(v.string()),
+      geographicPreference: v.optional(v.string()),
+      minTractionScore: v.optional(v.number()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Unauthenticated');
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!user) throw new Error('User not found');
+    if (user.role !== 'investor') throw new Error('Only investors can update thesis');
+
+    await ctx.db.patch(user._id, {
+      investmentRange: args.investmentRange,
+      investorThesis: args.investorThesis,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
   },
 });

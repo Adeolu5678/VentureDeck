@@ -6,14 +6,13 @@ import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search, TrendingUp, Users, ArrowRight, Sparkles, LayoutDashboard } from 'lucide-react';
+import { Plus, Search, TrendingUp, Users, ArrowRight, Sparkles, LayoutDashboard, Heart } from 'lucide-react';
 import Image from 'next/image';
 import MatchmakingWidget from '@/components/MatchmakingWidget';
-import { useBottomNav } from '@/context/BottomNavContext';
+import { ActivityFeed } from '@/components/ActivityFeed';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PremiumCard } from '@/components/ui/PremiumCard';
 import { PremiumButton } from '@/components/ui/PremiumButton';
-import { motion } from 'framer-motion';
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
@@ -161,18 +160,8 @@ function RoleSelection() {
 
 function EntrepreneurDashboard() {
   const myProjects = useQuery(api.projects.getMyProjects) || [];
-  const { setActions } = useBottomNav();
 
-  useEffect(() => {
-    setActions(
-      <Link href="/projects/create" className="flex-1">
-        <PremiumButton variant="primary" className="w-full rounded-full" leftIcon={<Plus className="w-4 h-4" />}>
-          New Project
-        </PremiumButton>
-      </Link>
-    );
-    return () => setActions(null);
-  }, [setActions]);
+  // Note: "New Project" button is now in TopNav for entrepreneurs
 
   return (
     <div className="space-y-12">
@@ -206,34 +195,28 @@ function EntrepreneurDashboard() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {myProjects.map((project, index) => (
+            {myProjects.map((project) => (
               <Link key={project._id} href={`/projects/${project._id}`}>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <PremiumCard glow className="h-full hover:border-primary/50">
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center text-2xl font-bold text-primary border border-primary/20 overflow-hidden relative">
-                        {project.logoUrl ? (
-                          <Image src={project.logoUrl} alt="" fill className="object-cover" />
-                        ) : (
-                          project.title[0]
-                        )}
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide border ${
-                        project.status === 'published' 
-                          ? 'bg-accent/10 text-accent border-accent/20' 
-                          : 'bg-white/5 text-slate-400 border-white/10'
-                      }`}>
-                        {project.status.toUpperCase()}
-                      </span>
+                <PremiumCard glow className="h-full hover:border-primary/50">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center text-2xl font-bold text-primary border border-primary/20 overflow-hidden relative">
+                      {project.logoUrl ? (
+                        <Image src={project.logoUrl} alt={`${project.title} logo`} fill sizes="56px" className="object-cover" />
+                      ) : (
+                        project.title[0]
+                      )}
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{project.title}</h3>
-                    <p className="text-slate-400 text-sm line-clamp-2 leading-relaxed">{project.tagline}</p>
-                  </PremiumCard>
-                </motion.div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide border ${
+                      project.status === 'published' 
+                        ? 'bg-accent/10 text-accent border-accent/20' 
+                        : 'bg-white/5 text-slate-400 border-white/10'
+                    }`}>
+                      {project.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{project.title}</h3>
+                  <p className="text-slate-400 text-sm line-clamp-2 leading-relaxed">{project.tagline}</p>
+                </PremiumCard>
               </Link>
             ))}
           </div>
@@ -241,6 +224,11 @@ function EntrepreneurDashboard() {
       </section>
 
       <JoinedProjectsSection />
+
+      {/* Activity Feed */}
+      <section>
+        <ActivityFeed variant="entrepreneur" />
+      </section>
     </div>
   );
 }
@@ -257,30 +245,24 @@ function JoinedProjectsSection() {
         Workspaces I&apos;m a Part of
       </h2>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {joinedProjects.map((project, index) => (
+        {joinedProjects.map((project) => (
           <Link key={project._id} href={`/workspaces/${project.workspaceId}`}>
-            <motion.div
-               initial={{ opacity: 0, y: 20 }}
-               animate={{ opacity: 1, y: 0 }}
-               transition={{ delay: index * 0.1 }}
-            >
-              <PremiumCard glow className="h-full hover:border-accent/50">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="w-14 h-14 bg-gradient-to-br from-accent/20 to-primary/20 rounded-xl flex items-center justify-center text-2xl font-bold text-accent border border-accent/20 overflow-hidden relative">
-                    {project.logoUrl ? (
-                      <Image src={project.logoUrl} alt="" fill className="object-cover" />
-                    ) : (
-                      project.title[0]
-                    )}
-                  </div>
-                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-slate-400 border border-white/10">
-                    Member
-                  </span>
+            <PremiumCard glow className="h-full hover:border-accent/50">
+              <div className="flex items-start justify-between mb-6">
+                <div className="w-14 h-14 bg-gradient-to-br from-accent/20 to-primary/20 rounded-xl flex items-center justify-center text-2xl font-bold text-accent border border-accent/20 overflow-hidden relative">
+                  {project.logoUrl ? (
+                    <Image src={project.logoUrl} alt={`${project.title} logo`} fill sizes="56px" className="object-cover" />
+                  ) : (
+                    project.title[0]
+                  )}
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-accent transition-colors">{project.title}</h3>
-                <p className="text-slate-400 text-sm line-clamp-2 leading-relaxed">{project.tagline}</p>
-              </PremiumCard>
-            </motion.div>
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-slate-400 border border-white/10">
+                  Member
+                </span>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-accent transition-colors">{project.title}</h3>
+              <p className="text-slate-400 text-sm line-clamp-2 leading-relaxed">{project.tagline}</p>
+            </PremiumCard>
           </Link>
         ))}
       </div>
@@ -289,57 +271,73 @@ function JoinedProjectsSection() {
 }
 
 function InvestorDashboard() {
-  const projects = useQuery(api.projects.list, {}) || [];
-  const { setActions } = useBottomNav();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // Debounce search term
   useEffect(() => {
-    setActions(
-      <button 
-        onClick={() => (document.querySelector('input[placeholder="Search projects..."]') as HTMLInputElement)?.focus()}
-        className="flex-1"
-      >
-        <PremiumButton variant="secondary" className="w-full rounded-full" leftIcon={<Search className="w-4 h-4" />}>
-           Search
-        </PremiumButton>
-      </button>
-    );
-    return () => setActions(null);
-  }, [setActions]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const projectsData = useQuery(api.projects.list, { 
+    search: debouncedSearch || undefined,
+    limit: 20 
+  });
+  const projects = projectsData?.projects || [];
+
+  // Note: Search functionality is available in the page content directly
 
   return (
     <div className="space-y-12">
       {/* AI Matchmaking Widget */}
       <MatchmakingWidget />
 
+      {/* Projects I'm Following */}
+      <FollowedProjectsSection />
+
       <section>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
             <Sparkles className="w-6 h-6 text-accent" />
             Discover
+            {projectsData?.total !== undefined && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({projectsData.total} projects)
+              </span>
+            )}
           </h2>
           <div className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
             <input 
               type="text" 
               placeholder="Search projects..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-64 transition-all"
             />
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project, index) => (
-            <Link key={project._id} href={`/projects/${project._id}`}>
-              <motion.div
-                 initial={{ opacity: 0, y: 20 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 transition={{ delay: index * 0.1 }}
-              >
+        {projects.length === 0 && debouncedSearch ? (
+          <div className="p-16 border border-dashed border-white/10 rounded-3xl text-center bg-white/5 backdrop-blur-sm">
+            <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">No projects found</h3>
+            <p className="text-muted-foreground">
+              No projects match &quot;{debouncedSearch}&quot;. Try a different search term.
+            </p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project) => (
+              <Link key={project._id} href={`/projects/${project._id}`}>
                 <PremiumCard glow className="h-full">
                   <div className="flex items-start justify-between mb-6">
                     <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center text-2xl font-bold text-primary border border-primary/20 overflow-hidden relative">
                        {project.logoUrl ? (
-                          <Image src={project.logoUrl} alt="" fill className="object-cover" />
+                          <Image src={project.logoUrl} alt={`${project.title} logo`} fill sizes="56px" className="object-cover" />
                         ) : (
                           project.title[0]
                         )}
@@ -363,11 +361,60 @@ function InvestorDashboard() {
                     </div>
                   </div>
                 </PremiumCard>
-              </motion.div>
-            </Link>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Activity Feed */}
+      <section>
+        <ActivityFeed variant="investor" />
       </section>
     </div>
+  );
+}
+
+function FollowedProjectsSection() {
+  const followedProjects = useQuery(api.project_followers.getFollowedProjects) || [];
+
+  if (followedProjects.length === 0) return null;
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
+          <Heart className="w-6 h-6 text-pink-500 fill-current" />
+          Projects I&apos;m Following
+          <span className="text-sm font-normal text-muted-foreground">({followedProjects.length})</span>
+        </h2>
+      </div>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {followedProjects.map((project) => (
+          <Link key={project._id} href={`/projects/${project._id}`}>
+            <PremiumCard glow className="h-full hover:border-pink-500/50">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-pink-500/20 to-primary/20 rounded-xl flex items-center justify-center text-xl font-bold text-pink-400 border border-pink-500/20 overflow-hidden relative">
+                  {project.logoUrl ? (
+                    <Image src={project.logoUrl} alt={`${project.title} logo`} fill sizes="48px" className="object-cover" />
+                  ) : (
+                    project.title[0]
+                  )}
+                </div>
+                <span className="text-xs font-medium text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2 py-1 rounded-lg">
+                  Following
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white mb-1 group-hover:text-pink-400 transition-colors">{project.title}</h3>
+              <p className="text-slate-400 text-sm line-clamp-1 mb-3">{project.tagline}</p>
+              <div className="flex items-center justify-between pt-3 border-t border-white/5 text-sm">
+                <span className="text-slate-500">by {project.ownerName}</span>
+                <span className="text-emerald-400 font-medium">${project.fundingGoal.toLocaleString()}</span>
+              </div>
+            </PremiumCard>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }

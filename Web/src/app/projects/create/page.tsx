@@ -5,6 +5,7 @@ import { useMutation, useAction } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { useRouter } from 'next/navigation';
 import { Upload, Check, ChevronRight, ChevronLeft } from 'lucide-react';
+import { PremiumButton } from '@/components/ui/PremiumButton';
 import { useBottomNav } from '@/context/BottomNavContext';
 
 export default function CreateProjectPage() {
@@ -85,22 +86,26 @@ export default function CreateProjectPage() {
     let action = null;
     if (step < 4) {
       action = (
-        <button
+        <PremiumButton
           onClick={() => setStep(s => s + 1)}
-          className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm shadow-lg shadow-primary/20"
+          variant="primary"
+          className="flex-1 rounded-full"
+          rightIcon={<ChevronRight className="w-4 h-4" />}
         >
-          Next <ChevronRight className="ml-2 h-4 w-4" />
-        </button>
+          Next
+        </PremiumButton>
       );
     } else {
       action = (
-        <button
+        <PremiumButton
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm shadow-lg shadow-primary/20 disabled:opacity-50"
+          variant="primary"
+          className="flex-1 rounded-full"
+          rightIcon={<Check className="w-4 h-4" />}
         >
-          {isSubmitting ? 'Publishing...' : 'Publish'} <Check className="ml-2 h-4 w-4" />
-        </button>
+          {isSubmitting ? 'Publishing...' : 'Publish'}
+        </PremiumButton>
       );
     }
     setActions(action);

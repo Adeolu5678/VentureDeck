@@ -177,28 +177,25 @@ async function handleUserDeleted(
       throw new Error("Clerk ID is undefined in webhook event data.");
     }
 
-    // Find user by clerkId
-    const user = await ctx.runQuery(api.users.getUserByClerkId, { clerkId });
-    if (!user) {
-      console.log(`User not found for deletion: ${clerkId}`);
-      return;
-    }
+    // Call the internal mutation to anonymize user data
+    await ctx.runMutation(internal.users.deleteUserData, { clerkId });
 
-    // Note: In a production app, you might want to soft delete or archive user data
-    // For now, we'll just log the deletion
-    console.log(`User deletion requested for: ${clerkId} (${user.username})`);
-
-    // Optional: You could implement user deletion logic here
-    // await ctx.runMutation(api.users.deleteUser, { userId: user._id });
+    console.log(`User deletion processed for: ${clerkId}`);
   } catch (error) {
     console.error('Error handling user deletion:', error);
     throw error;
   }
 }
 
-// Generate username from email address
+/**
+ * Generate username from email address.
+ * Adds a random suffix to help ensure uniqueness.
+ */
 function generateUsernameFromEmail(email: string): string {
   const [localPart] = email.split('@');
-  // Remove special characters and ensure uniqueness
-  return localPart.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  // Remove special characters and convert to lowercase
+  const baseUsername = localPart.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  // Add random suffix for uniqueness
+  const randomSuffix = Math.random().toString(36).substring(2, 6);
+  return `${baseUsername}${randomSuffix}`;
 }

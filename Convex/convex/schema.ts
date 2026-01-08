@@ -26,6 +26,8 @@ export default defineSchema({
     notificationPreferences: v.optional(v.object({
       email: v.boolean(),
       push: v.boolean(),
+      digestFrequency: v.optional(v.union(v.literal('daily'), v.literal('weekly'), v.literal('never'))),
+      digestDay: v.optional(v.number()), // 0-6 for weekly digest (0 = Sunday)
     })),
     privacySettings: v.optional(v.object({
       profileVisibility: v.union(v.literal('public'), v.literal('private')),
@@ -34,6 +36,14 @@ export default defineSchema({
     investmentRange: v.optional(v.object({
       min: v.number(),
       max: v.number(),
+    })),
+    // Investor thesis fields
+    investorThesis: v.optional(v.object({
+      preferredIndustries: v.optional(v.array(v.string())),
+      preferredStages: v.optional(v.array(v.string())), // seed, series-a, etc.
+      thesisDescription: v.optional(v.string()),
+      geographicPreference: v.optional(v.string()),
+      minTractionScore: v.optional(v.number()),
     })),
     avatarStorageId: v.optional(v.string()),
     
@@ -77,13 +87,41 @@ export default defineSchema({
     status: v.union(v.literal('draft'), v.literal('published'), v.literal('funded'), v.literal('closed')),
     logoUrl: v.optional(v.string()),
     pitchDeckUrl: v.optional(v.string()),
+    // AI Deal Scoring fields
+    tractionScore: v.optional(v.number()), // Calculated score 0-100
+    scoreLastUpdated: v.optional(v.number()), // Timestamp of last score calculation
+    scoreBreakdown: v.optional(v.object({
+      milestones: v.number(),
+      softCircles: v.number(),
+      followers: v.number(),
+      applications: v.number(),
+      teamCompleteness: v.number(),
+      pitchDeck: v.number(),
+      legalDocs: v.number(),
+    })),
+    // Stage for matching
+    stage: v.optional(v.union(
+      v.literal('idea'),
+      v.literal('mvp'),
+      v.literal('seed'),
+      v.literal('series-a'),
+      v.literal('series-b'),
+      v.literal('growth')
+    )),
+    // Geographic location for matching
+    location: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index('by_owner', ['ownerId'])
     .index('by_status', ['status'])
     .index('by_industry_status', ['industry', 'status']) // For filtering
-    .index('by_funding_status', ['fundingGoal', 'status']), // For filtering
+    .index('by_funding_status', ['fundingGoal', 'status']) // For filtering
+    .index('by_traction_score', ['tractionScore']) // For sorting by score
+    .searchIndex('search_projects', {
+      searchField: 'title',
+      filterFields: ['status', 'industry']
+    }),
 
   // Workspaces table - for team collaboration
   workspaces: defineTable({
@@ -92,11 +130,13 @@ export default defineSchema({
     members: v.array(v.id('users')),
     roles: v.optional(v.array(v.object({ userId: v.id('users'), role: v.string() }))),
     inviteCode: v.optional(v.string()),
+    ownerId: v.optional(v.id('users')), // Explicit owner field for consistency
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index('by_project', ['projectId'])
-    .index('by_member', ['members']),
+    .index('by_member', ['members'])
+    .index('by_invite_code', ['inviteCode']),
 
   // Applications table - for joining projects
   applications: defineTable({
@@ -164,12 +204,29 @@ export default defineSchema({
     title: v.string(),
     description: v.string(),
     reward: v.string(), // e.g. "$500" or "0.5% Equity"
-    status: v.union(v.literal('open'), v.literal('assigned'), v.literal('completed'), v.literal('paid')),
+    status: v.union(v.literal('open'), v.literal('assigned'), v.literal('submitted'), v.literal('completed'), v.literal('paid')),
     assigneeId: v.optional(v.id('users')),
+    // Submission fields
+    submissionUrl: v.optional(v.string()), // Link to PR, file, or deliverable
+    submissionNote: v.optional(v.string()), // Explanation from claimant
+    submittedAt: v.optional(v.number()),
+    reviewNote: v.optional(v.string()), // Feedback from reviewer
+    reviewedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index('by_project', ['projectId'])
-    .index('by_status', ['status']),
+    .index('by_status', ['status'])
+    .index('by_assignee', ['assigneeId']),
+
+  // Project Followers table - for investors following projects
+  project_followers: defineTable({
+    projectId: v.id('projects'),
+    userId: v.id('users'),
+    createdAt: v.number(),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_user', ['userId'])
+    .index('by_project_user', ['projectId', 'userId']),
 
   // Soft Circles table - for Investor interest
   soft_circles: defineTable({
@@ -220,7 +277,15 @@ export default defineSchema({
   // Legal Documents table
   legalDocs: defineTable({
     projectId: v.id('projects'),
-    type: v.union(v.literal('SAFE'), v.literal('NDA')),
+    type: v.union(
+      v.literal('SAFE'),
+      v.literal('NDA'),
+      v.literal('ADVISOR'),
+      v.literal('FOUNDER'),
+      v.literal('CONVERTIBLE_NOTE'),
+      v.literal('TERM_SHEET'),
+      v.literal('INVESTMENT_AGREEMENT')
+    ),
     status: v.union(v.literal('draft'), v.literal('signed')),
     storageId: v.string(), // ID of the stored PDF file
     createdAt: v.number(),
@@ -232,7 +297,21 @@ export default defineSchema({
   // Notifications table
   notifications: defineTable({
     userId: v.id('users'), // Recipient
-    type: v.union(v.literal('application_received'), v.literal('application_accepted'), v.literal('application_rejected'), v.literal('message_received'), v.literal('soft_circle_committed'), v.literal('system')),
+    type: v.union(
+      v.literal('application_received'), 
+      v.literal('application_accepted'), 
+      v.literal('application_rejected'), 
+      v.literal('message_received'), 
+      v.literal('soft_circle_committed'), 
+      v.literal('bounty_claimed'),
+      v.literal('bounty_submitted'),
+      v.literal('bounty_approved'),
+      v.literal('bounty_rejected'),
+      v.literal('project_followed'),
+      v.literal('milestone_completed'),
+      v.literal('digest'),
+      v.literal('system')
+    ),
     title: v.string(),
     message: v.string(),
     link: v.optional(v.string()), // URL to redirect to
@@ -241,4 +320,107 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_user_read', ['userId', 'read']),
+
+  // ============================================
+  // NEW TABLES FOR FEATURE EXPANSION
+  // ============================================
+
+  // Project Analytics - daily snapshots for founder dashboard
+  projectAnalytics: defineTable({
+    projectId: v.id('projects'),
+    date: v.number(), // Timestamp for the day (midnight UTC)
+    views: v.number(),
+    uniqueViews: v.number(),
+    followerCount: v.number(),
+    softCircleTotal: v.number(),
+    softCircleCount: v.number(),
+    applicationCount: v.number(),
+    tractionScore: v.number(),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_project_date', ['projectId', 'date']),
+
+  // Project View Tracking - for real-time analytics
+  projectViews: defineTable({
+    projectId: v.id('projects'),
+    viewerId: v.optional(v.id('users')), // Optional for anonymous views
+    viewerFingerprint: v.optional(v.string()), // For unique view counting
+    createdAt: v.number(),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_project_date', ['projectId', 'createdAt']),
+
+  // Due Diligence Data Rooms - secure document sharing
+  dataRooms: defineTable({
+    projectId: v.id('projects'),
+    name: v.string(),
+    description: v.optional(v.string()),
+    accessType: v.union(v.literal('invite_only'), v.literal('nda_required')),
+    isActive: v.boolean(),
+    expiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_project', ['projectId']),
+
+  // Data Room Documents
+  dataRoomDocuments: defineTable({
+    dataRoomId: v.id('dataRooms'),
+    name: v.string(),
+    description: v.optional(v.string()),
+    storageId: v.string(), // Convex file storage ID
+    fileType: v.optional(v.string()), // e.g., 'pdf', 'xlsx'
+    fileSize: v.optional(v.number()),
+    uploadedBy: v.id('users'),
+    uploadedAt: v.number(),
+  })
+    .index('by_data_room', ['dataRoomId']),
+
+  // Data Room Access Control & Audit Trail
+  dataRoomAccess: defineTable({
+    dataRoomId: v.id('dataRooms'),
+    userId: v.id('users'),
+    grantedBy: v.id('users'),
+    grantedAt: v.number(),
+    expiresAt: v.optional(v.number()),
+    status: v.union(v.literal('active'), v.literal('revoked'), v.literal('expired')),
+    viewCount: v.number(),
+    lastViewedAt: v.optional(v.number()),
+    ndaSignedAt: v.optional(v.number()), // If NDA required
+  })
+    .index('by_data_room', ['dataRoomId'])
+    .index('by_user', ['userId'])
+    .index('by_data_room_user', ['dataRoomId', 'userId']),
+
+  // Saved Searches for Investors
+  savedSearches: defineTable({
+    userId: v.id('users'),
+    name: v.string(),
+    filters: v.object({
+      industries: v.optional(v.array(v.string())),
+      stages: v.optional(v.array(v.string())),
+      minFunding: v.optional(v.number()),
+      maxFunding: v.optional(v.number()),
+      minTractionScore: v.optional(v.number()),
+      tags: v.optional(v.array(v.string())),
+      location: v.optional(v.string()),
+    }),
+    alertEnabled: v.optional(v.boolean()), // Send notifications for new matches
+    lastRunAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index('by_user', ['userId']),
+
+  // Application Templates for repeated use
+  applicationTemplates: defineTable({
+    userId: v.id('users'),
+    name: v.string(),
+    role: v.string(), // e.g., "CTO", "Co-founder"
+    message: v.string(), // Template message
+    isDefault: v.optional(v.boolean()),
+    usageCount: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_user', ['userId']),
 });

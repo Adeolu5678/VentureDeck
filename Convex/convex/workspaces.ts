@@ -245,9 +245,9 @@ export const kickMember = mutation({
     const workspace = await ctx.db.get(args.workspaceId);
     if (!workspace) throw new Error("Workspace not found");
 
-    // Only owner can kick
-    // Assuming first member is owner for now as per previous logic
-    if (workspace.members[0] !== user._id) {
+    // Check ownership via project owner for consistency
+    const project = await ctx.db.get(workspace.projectId);
+    if (!project || project.ownerId !== user._id) {
       throw new Error("Only the workspace owner can kick members");
     }
 
@@ -295,8 +295,9 @@ export const generateInviteCode = mutation({
     const workspace = await ctx.db.get(args.workspaceId);
     if (!workspace) throw new Error('Workspace not found');
 
-    // Only owner can generate invite code
-    if (workspace.members[0] !== user._id) {
+    // Check ownership via project owner for consistency
+    const project = await ctx.db.get(workspace.projectId);
+    if (!project || project.ownerId !== user._id) {
       throw new Error('Not authorized');
     }
 
@@ -326,7 +327,7 @@ export const joinByInviteCode = mutation({
 
     const workspace = await ctx.db
       .query('workspaces')
-      .filter(q => q.eq(q.field('inviteCode'), args.inviteCode))
+      .withIndex('by_invite_code', q => q.eq('inviteCode', args.inviteCode))
       .first();
 
     if (!workspace) throw new Error('Invalid invite code');
@@ -349,7 +350,7 @@ export const getWorkspaceByInviteCode = query({
   handler: async (ctx, args) => {
     const workspace = await ctx.db
       .query('workspaces')
-      .filter(q => q.eq(q.field('inviteCode'), args.inviteCode))
+      .withIndex('by_invite_code', q => q.eq('inviteCode', args.inviteCode))
       .first();
 
     if (!workspace) return null;

@@ -2,15 +2,16 @@
 
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Id } from '@convex/_generated/dataModel';
-import { Briefcase, Shield, User, ThumbsUp, UserPlus, Check } from 'lucide-react';
+import { Briefcase, Shield, User, ThumbsUp, UserPlus, Check, Settings } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { PremiumButton } from '@/components/ui/PremiumButton';
 import { PremiumCard } from '@/components/ui/PremiumCard';
 import { toast } from 'sonner';
+import { useBottomNav } from '@/context/BottomNavContext';
 
 interface UserData {
   _id: Id<"users">;
@@ -69,6 +70,66 @@ export default function PublicProfilePage() {
   const [isVouching, setIsVouching] = useState(false);
   const [relationship, setRelationship] = useState('');
   const [vouchText, setVouchText] = useState('');
+  const { setActions } = useBottomNav();
+
+  const isMe = currentUser !== undefined && currentUser !== null && user !== undefined && currentUser._id === user?._id;
+  const isFriend = user ? myFriends.some(f => f._id === user._id) : false;
+  const isPending = user ? mySentRequests.some(r => r.friendId === user._id) : false;
+
+  const handleConnect = useCallback(async () => {
+    try {
+      await sendFriendRequest({ friendId: userId });
+      toast.success('Friend request sent');
+    } catch {
+      toast.error('Failed to send friend request');
+    }
+  }, [sendFriendRequest, userId]);
+
+  // Set bottom nav actions based on context
+  useEffect(() => {
+    if (!user || currentUser === undefined) return;
+    
+    if (isMe) {
+      setActions(
+        <Link href="/settings" className="flex-1">
+          <PremiumButton 
+            variant="primary" 
+            className="w-full rounded-full"
+            leftIcon={<Settings className="w-4 h-4" />}
+          >
+            Edit Profile
+          </PremiumButton>
+        </Link>
+      );
+    } else if (currentUser) {
+      // Non-self user: show Connect or Vouch
+      if (!isFriend && !isPending) {
+        setActions(
+          <PremiumButton 
+            onClick={handleConnect}
+            variant="primary" 
+            className="flex-1 rounded-full"
+            leftIcon={<UserPlus className="w-4 h-4" />}
+          >
+            Connect
+          </PremiumButton>
+        );
+      } else {
+        setActions(
+          <PremiumButton 
+            onClick={() => setIsVouching(true)}
+            variant="secondary" 
+            className="flex-1 rounded-full"
+            leftIcon={<ThumbsUp className="w-4 h-4" />}
+          >
+            Vouch
+          </PremiumButton>
+        );
+      }
+    }
+    
+    return () => setActions(null);
+  }, [user, currentUser, isMe, isFriend, isPending, setActions, handleConnect]);
 
   if (user === undefined) return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
@@ -77,9 +138,7 @@ export default function PublicProfilePage() {
   );
   if (user === null) return <div className="min-h-screen bg-background text-foreground flex items-center justify-center">User not found.</div>;
 
-  const isMe = currentUser?._id === user._id;
-  const isFriend = myFriends.some(f => f._id === user._id);
-  const isPending = mySentRequests.some(r => r.friendId === user._id);
+
 
   const handleVouch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,14 +157,7 @@ export default function PublicProfilePage() {
     }
   };
 
-  const handleConnect = async () => {
-    try {
-      await sendFriendRequest({ friendId: userId });
-      toast.success('Friend request sent');
-    } catch {
-      toast.error('Failed to send friend request');
-    }
-  };
+
 
   return (
     <div className="min-h-screen text-foreground pb-24">
@@ -127,14 +179,26 @@ export default function PublicProfilePage() {
           
           <div className="flex-1 mb-4">
             <h1 className="text-4xl font-bold text-white mb-2">@{user.username}</h1>
-            <p className="text-lg text-muted-foreground capitalize flex items-center gap-2">
-              {user.role}
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-lg text-muted-foreground capitalize">{user.role}</span>
               {isFriend && (
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs border border-emerald-500/20">
                   Friend
                 </span>
               )}
-            </p>
+              {vouches.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs border border-primary/20 flex items-center gap-1">
+                  <ThumbsUp className="w-3 h-3" />
+                  {vouches.length} {vouches.length === 1 ? 'Vouch' : 'Vouches'}
+                </span>
+              )}
+              {projects.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent text-xs border border-accent/20 flex items-center gap-1">
+                  <Briefcase className="w-3 h-3" />
+                  {projects.length} {projects.length === 1 ? 'Project' : 'Projects'}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-3 mb-4">

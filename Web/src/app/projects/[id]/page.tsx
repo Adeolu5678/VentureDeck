@@ -4,7 +4,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, DollarSign, PieChart, MessageSquare, Send, CheckCircle, Globe, Shield, User } from 'lucide-react';
+import { ArrowLeft, DollarSign, PieChart, MessageSquare, Send, CheckCircle, Globe, Shield, User, FileText, Heart, TrendingUp, Users, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { Id, Doc } from '@convex/_generated/dataModel';
 import Image from 'next/image';
@@ -14,6 +14,7 @@ import { useBottomNav } from '@/context/BottomNavContext';
 import { useEffect, useCallback } from 'react';
 import { PremiumButton } from '@/components/ui/PremiumButton';
 import { PremiumCard } from '@/components/ui/PremiumCard';
+import { PitchDeckViewer } from '@/components/PitchDeckViewer';
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -23,9 +24,14 @@ export default function ProjectDetailPage() {
   const user = useQuery(api.users.getCurrentUser);
   const project = useQuery(api.projects.get, { id: projectId });
   const myApplication = useQuery(api.applications.getMyApplicationStatus, { projectId });
+  const isFollowing = useQuery(api.project_followers.isFollowing, { projectId });
+  const followerCount = useQuery(api.project_followers.getFollowerCount, { projectId }) ?? 0;
+  const tractionScore = useQuery(api.milestones.getTractionScore, { projectId }) ?? 0;
   
   const apply = useMutation(api.applications.create);
   const createDirectMessage = useMutation(api.conversations.createDirectMessage);
+  const followProject = useMutation(api.project_followers.follow);
+  const unfollowProject = useMutation(api.project_followers.unfollow);
 
   const [isApplying, setIsApplying] = useState(false);
   const [applicationRole, setApplicationRole] = useState('');
@@ -159,10 +165,17 @@ export default function ProjectDetailPage() {
                     </span>
                   ))}
                 </div>
+
+                {/* Pitch Deck Button */}
+                {project.pitchDeckUrl && (
+                  <div className="mt-6 pt-6 border-t border-white/10">
+                    <PitchDeckViewer url={project.pitchDeckUrl} title={`${project.title} Pitch Deck`} />
+                  </div>
+                )}
               </PremiumCard>
 
               {/* Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <PremiumCard variant="glass" className="flex flex-col items-center text-center">
                   <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 mb-3">
                     <DollarSign className="w-6 h-6" />
@@ -184,7 +197,23 @@ export default function ProjectDetailPage() {
                     <Globe className="w-6 h-6" />
                   </div>
                   <span className="text-slate-400 text-sm font-medium mb-1">Industry</span>
-                  <div className="text-2xl font-bold text-white">{project.industry}</div>
+                  <div className="text-lg font-bold text-white">{project.industry}</div>
+                </PremiumCard>
+
+                <PremiumCard variant="glass" className="flex flex-col items-center text-center">
+                  <div className="p-3 bg-amber-500/10 rounded-xl text-amber-400 mb-3">
+                    <TrendingUp className="w-6 h-6" />
+                  </div>
+                  <span className="text-slate-400 text-sm font-medium mb-1">Traction</span>
+                  <div className="text-2xl font-bold text-white">{tractionScore}%</div>
+                </PremiumCard>
+
+                <PremiumCard variant="glass" className="flex flex-col items-center text-center">
+                  <div className="p-3 bg-pink-500/10 rounded-xl text-pink-400 mb-3">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <span className="text-slate-400 text-sm font-medium mb-1">Followers</span>
+                  <div className="text-2xl font-bold text-white">{followerCount}</div>
                 </PremiumCard>
               </div>
 
@@ -219,6 +248,9 @@ export default function ProjectDetailPage() {
                     <Link href={`/projects/${projectId}/edit`}>
                       <PremiumButton className="w-full" variant="secondary">Edit Project</PremiumButton>
                     </Link>
+                    <Link href={`/projects/${projectId}/legal`}>
+                      <PremiumButton className="w-full" variant="ghost" leftIcon={<FileText className="w-4 h-4" />}>Legal Documents</PremiumButton>
+                    </Link>
                   </>
                 ) : isMember ? (
                    <>
@@ -230,6 +262,27 @@ export default function ProjectDetailPage() {
                   </>
                 ) : isInvestor ? (
                   <>
+                    {/* Follow Button */}
+                    <PremiumButton 
+                      onClick={async () => {
+                        try {
+                          if (isFollowing) {
+                            await unfollowProject({ projectId });
+                            toast.success('Unfollowed project');
+                          } else {
+                            await followProject({ projectId });
+                            toast.success('Following project! You\'ll get updates.');
+                          }
+                        } catch {
+                          toast.error('Failed to update follow status');
+                        }
+                      }} 
+                      className="w-full" 
+                      variant={isFollowing ? 'ghost' : 'secondary'}
+                      leftIcon={<Heart className={`w-4 h-4 ${isFollowing ? 'fill-current text-red-500' : ''}`} />}
+                    >
+                      {isFollowing ? 'Following' : 'Follow Project'}
+                    </PremiumButton>
                     <PremiumButton onClick={handleContactFounder} className="w-full" variant="primary" leftIcon={<MessageSquare className="w-4 h-4" />}>
                       Contact Founder
                     </PremiumButton>
@@ -361,23 +414,25 @@ function FeaturesSection({ projectId }: { projectId: Id<'projects'> }) {
           <CheckCircle className="w-5 h-5 text-primary" />
           Project Roadmap & Bounties
         </h3>
-        <div className="flex bg-slate-900 rounded-lg p-1">
-          <button
-            onClick={() => setActiveTab('milestones')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-              activeTab === 'milestones' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Milestones
-          </button>
-          <button
-            onClick={() => setActiveTab('bounties')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-              activeTab === 'bounties' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Bounties
-          </button>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-slate-900 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('milestones')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                activeTab === 'milestones' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Milestones
+            </button>
+            <button
+              onClick={() => setActiveTab('bounties')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                activeTab === 'bounties' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Bounties
+            </button>
+          </div>
         </div>
       </div>
 
@@ -386,44 +441,69 @@ function FeaturesSection({ projectId }: { projectId: Id<'projects'> }) {
           milestones?.length === 0 ? (
             <div className="text-center text-slate-500 py-4">No milestones yet.</div>
           ) : (
-            milestones?.map((m) => (
-              <div key={m._id} className="p-4 bg-slate-900/50 rounded-xl border border-white/5">
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-medium text-white">{m.title}</h4>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                    m.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
-                    m.status === 'verified' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                    'bg-slate-700 text-slate-300 border-slate-600'
-                  }`}>
-                    {m.status}
-                  </span>
+            <>
+              {milestones?.slice(0, 3).map((m) => (
+                <div key={m._id} className="p-4 bg-slate-900/50 rounded-xl border border-white/5">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-medium text-white">{m.title}</h4>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                      m.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
+                      m.status === 'verified' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                      'bg-slate-700 text-slate-300 border-slate-600'
+                    }`}>
+                      {m.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-400 mb-2">{m.description}</p>
+                  <div className="text-xs text-slate-500">Target: {new Date(m.date).toLocaleDateString()}</div>
                 </div>
-                <p className="text-sm text-slate-400 mb-2">{m.description}</p>
-                <div className="text-xs text-slate-500">Target: {new Date(m.date).toLocaleDateString()}</div>
-              </div>
-            ))
+              ))}
+              {/* View All Milestones Link */}
+              <Link 
+                href={`/projects/${projectId}/milestones`}
+                className="flex items-center justify-center gap-2 py-3 text-sm font-medium text-primary hover:text-indigo-300 bg-primary/5 hover:bg-primary/10 rounded-xl transition-all border border-primary/10 hover:border-primary/20"
+              >
+                View All Milestones ({milestones?.length})
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </>
           )
         ) : (
           bounties?.length === 0 ? (
             <div className="text-center text-slate-500 py-4">No open bounties.</div>
           ) : (
-            bounties?.map((b) => (
-              <div key={b._id} className="p-4 bg-slate-900/50 rounded-xl border border-white/5">
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-medium text-white">{b.title}</h4>
-                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    {b.reward}
-                  </span>
+            <>
+              {bounties?.slice(0, 3).map((b) => (
+                <div key={b._id} className="p-4 bg-slate-900/50 rounded-xl border border-white/5">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-medium text-white">{b.title}</h4>
+                    <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      {b.reward}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-400 mb-2">{b.description}</p>
+                  <div className="flex justify-between items-center text-xs text-slate-500">
+                    <span className="capitalize">{b.status}</span>
+                    {b.status === 'open' && (
+                      <Link 
+                        href={`/projects/${projectId}/bounties`}
+                        className="text-primary hover:text-indigo-300 font-medium flex items-center gap-1"
+                      >
+                        View & Claim <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    )}
+                  </div>
                 </div>
-                <p className="text-sm text-slate-400 mb-2">{b.description}</p>
-                <div className="flex justify-between items-center text-xs text-slate-500">
-                  <span>{b.status}</span>
-                  {b.status === 'open' && (
-                    <button className="text-primary hover:text-indigo-300 font-medium">Claim</button>
-                  )}
-                </div>
-              </div>
-            ))
+              ))}
+              {/* View All Bounties Link */}
+              <Link 
+                href={`/projects/${projectId}/bounties`}
+                className="flex items-center justify-center gap-2 py-3 text-sm font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-xl transition-all border border-emerald-500/10 hover:border-emerald-500/20"
+              >
+                View All Bounties ({bounties?.length})
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </>
           )
         )}
       </div>

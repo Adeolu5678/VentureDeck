@@ -4,8 +4,12 @@ import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
-import { Briefcase, ArrowRight, Loader2, LayoutGrid } from 'lucide-react';
+import { Briefcase, ArrowRight, Loader2, LayoutGrid, Plus, Search } from 'lucide-react';
 import { Id } from '@convex/_generated/dataModel';
+import { useEffect } from 'react';
+import { useBottomNav } from '@/context/BottomNavContext';
+import { PremiumButton } from '@/components/ui/PremiumButton';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 interface Workspace {
   _id: Id<"workspaces">;
@@ -18,6 +22,34 @@ interface Workspace {
 export default function WorkspacesPage() {
   const { isLoaded, user } = useUser();
   const workspaces = useQuery(api.workspaces.list) as Workspace[] | undefined;
+  const { setActions } = useBottomNav();
+
+  // Set bottom nav actions - context aligned with workspace management
+  useEffect(() => {
+    setActions(
+      <div className="flex items-center gap-2 flex-1">
+        <Link href="/projects" className="flex-1">
+          <PremiumButton
+            variant="glass"
+            className="w-full rounded-full"
+            leftIcon={<Search className="w-4 h-4" />}
+          >
+            Browse Projects
+          </PremiumButton>
+        </Link>
+        <Link href="/projects/create" className="flex-1">
+          <PremiumButton
+            variant="primary"
+            className="w-full rounded-full"
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            New Project
+          </PremiumButton>
+        </Link>
+      </div>
+    );
+    return () => setActions(null);
+  }, [setActions]);
 
   if (!isLoaded || !user) return null;
 
@@ -30,24 +62,16 @@ export default function WorkspacesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground pb-24">
       <main className="max-w-7xl mx-auto px-6 py-12">
-        <header className="mb-12 flex items-center justify-between animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">
-              My <span className="text-gradient">Workspaces</span>
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              Collaborate with your team and manage your projects.
-            </p>
-          </div>
-          {/* 
-            Ideally, creating a workspace happens via creating a project or a specific flow.
-            For now, we just link to project creation if that's the main entry point, 
-            or we could have a 'New Workspace' button if the logic supports it.
-            Assuming workspaces are tied to projects for now.
-          */}
-        </header>
+        <PageHeader 
+          title="My Workspaces" 
+          description="Collaborate with your team and manage your projects."
+          breadcrumbs={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Workspaces" }
+          ]}
+        />
 
         {workspaces.length === 0 ? (
           <div className="p-16 border border-dashed border-border rounded-3xl text-center bg-muted/20 backdrop-blur-sm animate-in zoom-in-95 duration-500">
@@ -66,7 +90,7 @@ export default function WorkspacesPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
             {workspaces.map((workspace) => (
               <Link key={workspace._id} href={`/workspaces/${workspace._id}`} className="block group">
                 <div className="glass-panel rounded-2xl p-6 hover:border-primary/50 transition-all h-full group-hover:-translate-y-1 relative overflow-hidden">
@@ -88,7 +112,6 @@ export default function WorkspacesPage() {
                       <span>Workspace</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                       {/* We could show member count here if we wanted */}
                        <span>{workspace.members.length} Member{workspace.members.length !== 1 ? 's' : ''}</span>
                     </div>
                   </div>

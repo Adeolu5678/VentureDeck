@@ -65,20 +65,40 @@ export const commit = mutation({
   },
 });
 
-// List soft circles for a project
+// List soft circles for a project with investor details
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    // In a real app, we might want to fetch user details too.
-    // For now, just return the raw records.
-    return await ctx.db
+    const softCircles = await ctx.db
       .query('soft_circles')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
+
+    // Enrich with investor details
+    const enrichedCircles = await Promise.all(
+      softCircles.map(async (circle) => {
+        const investor = await ctx.db.get(circle.investorId);
+        return {
+          ...circle,
+          investor: investor ? {
+            _id: investor._id,
+            username: investor.username,
+            displayName: investor.displayName,
+            avatarUrl: investor.avatarUrl,
+            role: investor.role,
+          } : null,
+        };
+      })
+    );
+
+    return enrichedCircles;
   },
 });
 
-// Update status (e.g. Investor confirms, or withdraws)
+/**
+ * Update soft circle status (e.g. Investor confirms, or withdraws).
+ * Only the investor who made the commitment or the project owner can update.
+ */
 export const updateStatus = mutation({
   args: {
     id: v.id('soft_circles'),
@@ -86,30 +106,46 @@ export const updateStatus = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Unauthorized');
+    if (!identity) {
+      throw new Error('Authentication required');
+    }
 
-    // Add checks: only the investor or project owner should be able to update this.
-    
-    await ctx.db.patch(args.id, { status: args.status });
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const softCircle = await ctx.db.get(args.id);
+    if (!softCircle) {
+      throw new Error('Soft circle commitment not found');
+    }
+
+    const project = await ctx.db.get(softCircle.projectId);
+    if (!project) {
+      throw new Error('Project not found');
+    }
+
+    // Only the investor who made the commitment or the project owner can update
+    const isInvestor = softCircle.investorId === user._id;
+    const isProjectOwner = project.ownerId === user._id;
+
+    if (!isInvestor && !isProjectOwner) {
+      throw new Error('Unauthorized: Only the investor or project owner can update this commitment');
+    }
+
+    await ctx.db.patch(args.id, { 
+      status: args.status,
+      updatedAt: Date.now(),
+    });
   },
 });
 
-// Get a single soft circle by ID (or list for project context)
-// Actually the frontend calls api.soft_circles.get with { projectId }
-// So it expects a list, but named 'get'? 
-// Wait, the error said "Property 'get' does not exist".
-// And the usage was: const commitments = useQuery(api.soft_circles.get, { projectId }) || [];
-// So 'get' should actually be 'list' or I should rename 'list' to 'get' or alias it.
-// 'list' already exists and takes projectId.
-// I will add 'get' as an alias to 'list' to match frontend usage, or better, update frontend to use 'list'.
-// But to fix the error quickly without changing frontend logic (if I want to keep it simple), I'll add 'get' which does the same as 'list'.
-export const get = query({
-  args: { projectId: v.id('projects') },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query('soft_circles')
-      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .collect();
-  },
-});
-
+/**
+ * Alias for `list` to maintain backward compatibility with frontend.
+ * @deprecated Use `list` instead.
+ */
+export const get = list;

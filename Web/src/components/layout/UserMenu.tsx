@@ -4,7 +4,7 @@ import { useUser, SignOutButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
-import { User, Settings, LogOut, ChevronDown, Bell, MessageSquare } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, LayoutGrid, Shield } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 
@@ -65,7 +65,7 @@ export function UserMenu() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-xl shadow-black/50 py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+        <div className="absolute right-0 mt-2 w-56 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl shadow-black/60 py-2 z-[100] animate-in fade-in zoom-in-95 duration-200">
           <div className="px-4 py-3 border-b border-white/5 mb-2">
             <p className="text-sm font-medium text-white">{displayName}</p>
             <p className="text-xs text-slate-400 truncate">{email}</p>
@@ -81,12 +81,12 @@ export function UserMenu() {
           </Link>
 
           <Link
-            href="/notifications"
+            href="/workspaces"
             className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
             onClick={() => setIsOpen(false)}
           >
-            <Bell className="w-4 h-4" />
-            Notifications
+            <LayoutGrid className="w-4 h-4" />
+            Workspaces
           </Link>
           
           <Link
@@ -98,14 +98,17 @@ export function UserMenu() {
             Settings
           </Link>
 
-          <Link
-            href="/conversations"
-            className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-            onClick={() => setIsOpen(false)}
-          >
-            <MessageSquare className="w-4 h-4" />
-            Conversations
-          </Link>
+          {/* Admin Link - Only visible to admin users */}
+          {convexUser?.isAdmin && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+              onClick={() => setIsOpen(false)}
+            >
+              <Shield className="w-4 h-4" />
+              Admin Dashboard
+            </Link>
+          )}
           
           <div className="border-t border-white/5 my-1"></div>
           

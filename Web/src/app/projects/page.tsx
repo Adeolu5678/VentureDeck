@@ -2,93 +2,217 @@
 
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
-import { Search, Filter, TrendingUp } from 'lucide-react';
+import { Search, TrendingUp, Plus, X, Sparkles, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Doc } from '@convex/_generated/dataModel';
 import Image from 'next/image';
+import { useBottomNav } from '@/context/BottomNavContext';
+import { PremiumButton } from '@/components/ui/PremiumButton';
+import { PremiumCard } from '@/components/ui/PremiumCard';
+import { PageHeader } from '@/components/ui/PageHeader';
+
+const INDUSTRIES = [
+  'All Industries',
+  'FinTech',
+  'AI/ML',
+  'SaaS',
+  'Healthcare',
+  'E-commerce',
+  'EdTech',
+  'Climate',
+  'Consumer',
+  'Enterprise',
+  'Other'
+];
 
 export default function ProjectsPage() {
-  const [industry] = useState<string | undefined>(undefined);
-  const projects = useQuery(api.projects.list, { industry }) || [];
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedIndustry, setSelectedIndustry] = useState<string | undefined>(undefined);
+  const { setActions } = useBottomNav();
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-white pb-24 px-6 pt-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Discover Projects</h1>
-          <p className="text-slate-400 text-sm">Find the next big thing.</p>
-        </div>
-        <Link 
-          href="/projects/create"
-          className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const projectsData = useQuery(api.projects.list, { 
+    search: debouncedSearch || undefined,
+    industry: selectedIndustry,
+    limit: 50 
+  });
+  const projects = projectsData?.projects || [];
+
+  // Set bottom nav actions - context aligned with browsing/discovery
+  useEffect(() => {
+    setActions(
+      <div className="flex items-center gap-2 flex-1">
+        <PremiumButton
+          onClick={() => {
+            // Scroll to search area and focus the input
+            document.getElementById('project-search')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => {
+              (document.getElementById('project-search') as HTMLInputElement)?.focus();
+            }, 300);
+          }}
+          variant="glass"
+          className="rounded-full"
+          leftIcon={<SlidersHorizontal className="w-4 h-4" />}
         >
-          Create Project
+          Search & Filter
+        </PremiumButton>
+        <Link href="/projects/create" className="flex-1">
+          <PremiumButton variant="primary" className="w-full rounded-full" leftIcon={<Plus className="w-4 h-4" />}>
+            New Project
+          </PremiumButton>
         </Link>
       </div>
+    );
+    return () => setActions(null);
+  }, [setActions]);
 
-      {/* Search & Filter */}
-      <div className="flex gap-4 mb-8">
-        <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl flex items-center px-4 py-3">
-          <Search className="w-5 h-5 text-slate-400 mr-3" />
+  return (
+    <div className="min-h-screen text-foreground pb-24">
+      <div className="relative pt-12 px-6 max-w-7xl mx-auto">
+        <PageHeader 
+          title="Discover Projects" 
+          description="Find the next big thing. Browse startups looking for investment."
+          breadcrumbs={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Projects" }
+          ]}
+        />
+
+        {/* Search Bar */}
+        <div className="relative mb-6">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input 
+            id="project-search"
             type="text" 
-            placeholder="Search projects..." 
-            className="bg-transparent border-none outline-none text-white w-full placeholder:text-slate-500"
+            placeholder="Search by title, tagline, or industry..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
           />
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm('')}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
-        <button className="bg-slate-900 border border-slate-800 rounded-xl px-4 flex items-center justify-center hover:bg-slate-800 transition-colors">
-          <Filter className="w-5 h-5 text-slate-400" />
-        </button>
-      </div>
 
-      {/* Trending / Featured (Placeholder) */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="w-4 h-4 text-primary" />
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">Trending Now</h2>
+        {/* Industry Filter Pills */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          {INDUSTRIES.map((industry) => (
+            <button
+              key={industry}
+              onClick={() => setSelectedIndustry(industry === 'All Industries' ? undefined : industry)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                (industry === 'All Industries' && !selectedIndustry) || selectedIndustry === industry
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                  : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
+              }`}
+            >
+              {industry}
+            </button>
+          ))}
         </div>
-        {/* Horizontal Scroll or Grid */}
-      </div>
 
-      {/* Project List */}
-      <div className="grid gap-4">
+        {/* Results Count */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-sm text-muted-foreground">
+              {projectsData?.total !== undefined ? (
+                <>{projectsData.total} project{projectsData.total !== 1 ? 's' : ''} found</>
+              ) : (
+                'Loading...'
+              )}
+            </span>
+          </div>
+          {(debouncedSearch || selectedIndustry) && (
+            <button 
+              onClick={() => { setSearchTerm(''); setSelectedIndustry(undefined); }}
+              className="text-sm text-primary hover:text-indigo-300 flex items-center gap-1"
+            >
+              <X className="w-3 h-3" /> Clear filters
+            </button>
+          )}
+        </div>
+
+        {/* Project List */}
         {projects.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">
-            No projects found. Be the first to launch!
+          <div className="p-16 border border-dashed border-white/10 rounded-3xl text-center bg-white/5 backdrop-blur-sm">
+            {debouncedSearch || selectedIndustry ? (
+              <>
+                <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">No projects found</h3>
+                <p className="text-muted-foreground mb-6">
+                  No projects match your current filters. Try adjusting your search or browse all projects.
+                </p>
+                <PremiumButton onClick={() => { setSearchTerm(''); setSelectedIndustry(undefined); }}>
+                  Clear Filters
+                </PremiumButton>
+              </>
+            ) : (
+              <>
+                <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">No projects yet</h3>
+                <p className="text-muted-foreground mb-6">Be the first to launch a project!</p>
+                <Link href="/projects/create">
+                  <PremiumButton rightIcon={<ArrowRight className="w-4 h-4" />}>
+                    Create Project
+                  </PremiumButton>
+                </Link>
+              </>
+            )}
           </div>
         ) : (
-          projects.map((project: Doc<'projects'>) => (
-            <Link key={project._id} href={`/projects/${project._id}`}>
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-primary/50 transition-colors">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center text-xl font-bold">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project: Doc<'projects'>) => (
+              <Link key={project._id} href={`/projects/${project._id}`}>
+                <PremiumCard glow className="h-full hover:border-primary/50 group">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center text-2xl font-bold text-primary border border-primary/20 overflow-hidden relative">
                       {project.logoUrl ? (
-                        <Image src={project.logoUrl} alt="Logo" width={48} height={48} className="w-full h-full object-cover rounded-lg" />
+                        <Image src={project.logoUrl} alt={project.title} fill sizes="56px" className="object-cover" />
                       ) : (
                         project.title[0]
                       )}
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg leading-tight">{project.title}</h3>
-                      <p className="text-slate-400 text-xs">{project.industry}</p>
+                    <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-lg uppercase tracking-wider">
+                      {project.industry}
+                    </span>
+                  </div>
+                  
+                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">
+                    {project.title}
+                  </h3>
+                  <p className="text-slate-400 text-sm line-clamp-2 mb-4 leading-relaxed">
+                    {project.tagline}
+                  </p>
+                  
+                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                    <div className="text-sm">
+                      <span className="text-slate-500 block text-xs mb-0.5">Goal</span>
+                      <span className="text-white font-medium">${project.fundingGoal.toLocaleString()}</span>
+                    </div>
+                    <div className="text-sm text-right">
+                      <span className="text-slate-500 block text-xs mb-0.5">Equity</span>
+                      <span className="text-white font-medium">{project.equityOffered}%</span>
                     </div>
                   </div>
-                  <div className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-medium rounded">
-                    {project.status}
-                  </div>
-                </div>
-                <p className="text-slate-300 text-sm line-clamp-2 mb-4">
-                  {project.tagline}
-                </p>
-                <div className="flex items-center justify-between text-xs text-slate-500 border-t border-slate-800 pt-3">
-                  <div>Target: ${project.fundingGoal.toLocaleString()}</div>
-                  <div>Equity: {project.equityOffered}%</div>
-                </div>
-              </div>
-            </Link>
-          ))
+                </PremiumCard>
+              </Link>
+            ))}
+          </div>
         )}
       </div>
     </div>

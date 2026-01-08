@@ -1,8 +1,13 @@
-import { mutation, query } from './_generated/server';
+import { mutation, query, internalMutation } from './_generated/server';
 import { v } from 'convex/values';
 
-// Create a notification (Internal use mostly)
-export const create = mutation({
+/**
+ * Create a notification - INTERNAL USE ONLY.
+ * This mutation can only be called from other backend functions,
+ * not directly from the client. This prevents users from sending
+ * fake notifications to other users.
+ */
+export const internalCreate = internalMutation({
   args: {
     userId: v.id('users'),
     type: v.union(v.literal('application_received'), v.literal('application_accepted'), v.literal('application_rejected'), v.literal('message_received'), v.literal('soft_circle_committed'), v.literal('system')),
@@ -11,15 +16,6 @@ export const create = mutation({
     link: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Any authenticated user can trigger a notification? 
-    // Ideally this should be restricted or triggered by other mutations internally.
-    // For now, we allow it but we might want to check if the sender has permission to notify the user.
-    // In a real app, we'd use internal mutations.
-    
-    // For simplicity, we allow it for now.
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
     await ctx.db.insert('notifications', {
       userId: args.userId,
       type: args.type,

@@ -21,6 +21,41 @@ export const getFeatureFlags = query({
 });
 
 /**
+ * List all feature flags with full details (for admin dashboard).
+ */
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query('featureFlags').collect();
+  },
+});
+
+/**
+ * Update a feature flag by ID (for admin dashboard toggle).
+ */
+export const update = mutation({
+  args: {
+    id: v.id('featureFlags'),
+    enabled: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Authentication required');
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!user || !user.isAdmin) {
+      throw new Error('Unauthorized: Admin access required');
+    }
+
+    await ctx.db.patch(args.id, { enabled: args.enabled, updatedAt: Date.now() });
+  },
+});
+
+/**
  * Get a specific feature flag by name.
  */
 export const getFeatureFlag = query({
@@ -37,7 +72,7 @@ export const getFeatureFlag = query({
 
 /**
  * Set a feature flag.
- * This should ideally be protected by an admin check in a real production app.
+ * Restricted to admin users only.
  */
 export const setFeatureFlag = mutation({
   args: {
@@ -46,9 +81,20 @@ export const setFeatureFlag = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // In a real app, check for admin privileges here
-    // const identity = await ctx.auth.getUserIdentity();
-    // if (!isAdmin(identity)) throw new Error("Unauthorized");
+    // Verify admin privileges
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Authentication required');
+    }
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!user || !user.isAdmin) {
+      throw new Error('Unauthorized: Admin access required to modify feature flags');
+    }
 
     const existingFlag = await ctx.db
       .query('featureFlags')

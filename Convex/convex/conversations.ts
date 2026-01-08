@@ -112,6 +112,21 @@ export const sendMessage = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
+    // Input validation
+    const trimmedContent = args.content.trim();
+    if (trimmedContent.length === 0) {
+      throw new Error('Message cannot be empty');
+    }
+    if (trimmedContent.length > 10000) {
+      throw new Error('Message is too long (max 10,000 characters)');
+    }
+
+    // Basic sanitization - escape HTML entities
+    const sanitizedContent = trimmedContent
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
     const user = await ctx.db
       .query('users')
       .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
@@ -142,7 +157,7 @@ export const sendMessage = mutation({
     const messageId = await ctx.db.insert('messages', {
       conversationId: args.conversationId,
       senderId: user._id,
-      content: args.content,
+      content: sanitizedContent,
       imageUrl: args.imageUrl,
       createdAt: Date.now(),
     });
@@ -197,75 +212,79 @@ export const getMessages = query({
   },
 });
 
-// List my conversations
+// List my conversations with pagination and optimized lookups
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    limit: v.optional(v.number()),
+    cursor: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+    if (!identity) return { conversations: [], nextCursor: null };
 
     const user = await ctx.db
       .query('users')
       .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
       .unique();
 
-    if (!user) return [];
+    if (!user) return { conversations: [], nextCursor: null };
 
-    const conversations = await ctx.db.query('conversations').collect();
-    const myConversations = conversations.filter(c => c.participantIds.includes(user._id));
+    const limit = args.limit ?? 20;
+    
+    // Fetch conversations with limit (simplified - in production use cursor-based pagination)
+    const allConversations = await ctx.db.query('conversations').collect();
+    const myConversations = allConversations
+      .filter(c => c.participantIds.includes(user._id))
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, limit);
 
-    // Enrich with project details
-    return await Promise.all(myConversations.map(async (c) => {
-      let projectTitle = undefined;
-      let projectRole = undefined;
+    // Batch fetch all related entities to avoid N+1 queries
+    const projectIds = [...new Set(myConversations.map(c => c.projectId).filter(Boolean))];
+    const applicationIds = [...new Set(myConversations.map(c => c.applicationId).filter(Boolean))];
+    const workspaceIds = [...new Set(myConversations.map(c => c.workspaceId).filter(Boolean))];
+    const otherUserIds = [...new Set(
+      myConversations.flatMap(c => c.participantIds.filter(id => id !== user._id))
+    )];
 
-      let applicationRole = undefined;
-      let applicantId = undefined;
+    // Batch fetch all data in parallel
+    const [projects, applications, workspaces, otherUsers] = await Promise.all([
+      Promise.all(projectIds.map(id => ctx.db.get(id!))),
+      Promise.all(applicationIds.map(id => ctx.db.get(id!))),
+      Promise.all(workspaceIds.map(id => ctx.db.get(id!))),
+      Promise.all(otherUserIds.map(id => ctx.db.get(id))),
+    ]);
 
-      if (c.projectId) {
-        const project = await ctx.db.get(c.projectId);
-        if (project) {
-          projectTitle = project.title;
-          const isOwner = project.ownerId === user._id;
-          projectRole = isOwner ? 'Investor' : 'Founder';
-        }
-      }
+    // Create lookup maps for O(1) access
+    const projectMap = new Map(projects.filter(Boolean).map(p => [p!._id, p!]));
+    const applicationMap = new Map(applications.filter(Boolean).map(a => [a!._id, a!]));
+    const workspaceMap = new Map(workspaces.filter(Boolean).map(w => [w!._id, w!]));
+    const userMap = new Map(otherUsers.filter(Boolean).map(u => [u!._id, u!]));
 
-      if (c.applicationId) {
-        const application = await ctx.db.get(c.applicationId);
-        if (application) {
-          applicationRole = application.role;
-          applicantId = application.applicantId;
-        }
-      }
-
-      // Fetch other participant for display name
+    // Enrich conversations with lookup data
+    const enrichedConversations = myConversations.map(c => {
+      const project = c.projectId ? projectMap.get(c.projectId) : undefined;
+      const application = c.applicationId ? applicationMap.get(c.applicationId) : undefined;
+      const workspace = c.workspaceId ? workspaceMap.get(c.workspaceId) : undefined;
       const otherUserId = c.participantIds.find(id => id !== user._id);
-      let otherUser = undefined;
-      if (otherUserId) {
-        otherUser = await ctx.db.get(otherUserId);
-      }
-
-      let workspaceName = undefined;
-      if (c.workspaceId) {
-        const workspace = await ctx.db.get(c.workspaceId);
-        if (workspace) {
-          workspaceName = workspace.name;
-        }
-      }
+      const otherUser = otherUserId ? userMap.get(otherUserId) : undefined;
 
       return {
         ...c,
-        projectTitle,
-        projectRole,
-        applicationRole,
+        projectTitle: project?.title,
+        projectRole: project ? (project.ownerId === user._id ? 'Investor' : 'Founder') : undefined,
+        applicationRole: application?.role,
+        applicantId: application?.applicantId,
         otherUserName: otherUser ? (otherUser.displayName || otherUser.firstName || otherUser.username) : undefined,
         otherUserUsername: otherUser?.username,
         otherUserRole: otherUser?.role,
-        workspaceName,
-        applicantId,
+        workspaceName: workspace?.name,
       };
-    }));
+    });
+
+    return {
+      conversations: enrichedConversations,
+      nextCursor: myConversations.length >= limit ? myConversations[myConversations.length - 1]?._id : null,
+    };
   },
 });
 
