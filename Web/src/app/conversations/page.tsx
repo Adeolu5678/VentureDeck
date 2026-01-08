@@ -5,10 +5,11 @@ import { api } from '@convex/_generated/api';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { MessageSquare, Briefcase, User, Sparkles, DollarSign, ChevronDown, ChevronRight } from 'lucide-react';
+import { MessageSquare, Briefcase, User, DollarSign, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Id, Doc } from '@convex/_generated/dataModel';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 type EnrichedConversation = Doc<'conversations'> & {
   projectTitle?: string;
@@ -26,15 +27,17 @@ type InterviewSubTab = 'received' | 'sent';
 
 export default function ConversationsPage() {
   const { user } = useUser();
-  const conversations = useQuery(api.conversations.list);
+  const conversationsData = useQuery(api.conversations.list, {});
 
-  if (!user || conversations === undefined) {
+  if (!user || conversationsData === undefined) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white pt-20 flex justify-center">
+      <div className="min-h-screen text-white pt-20 flex justify-center">
         <div className="text-slate-500">Loading conversations...</div>
       </div>
     );
   }
+  
+  const conversations = conversationsData.conversations || [];
   
   return <ConversationsContent conversations={conversations} />;
 }
@@ -80,17 +83,16 @@ function ConversationsContent({ conversations }: { conversations: EnrichedConver
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white pt-20 pb-24 px-4 md:px-8 lg:px-12 flex justify-center">
+    <div className="min-h-screen text-white pt-20 pb-24 px-4 md:px-8 lg:px-12 flex justify-center">
       <div className="w-full max-w-4xl">
-        <header className="flex items-center gap-3 mb-8 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm">
-          <div className="bg-primary/20 p-2.5 rounded-xl">
-            <Sparkles className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Conversations</h1>
-            <p className="text-slate-400 text-sm">Your professional network</p>
-          </div>
-        </header>
+        <PageHeader 
+          title="Conversations" 
+          description="Your professional network"
+          breadcrumbs={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Conversations" }
+          ]}
+        />
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">

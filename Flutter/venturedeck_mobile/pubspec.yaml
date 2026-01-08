@@ -1,0 +1,110 @@
+name: venturedeck_mobile
+description: 'VentureDeck Mobile - Investment Platform'
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Core
+  cupertino_icons: ^1.0.8
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Navigation
+  go_router: ^14.6.3
+
+  # Network & API
+  dio: ^5.7.0
+  web_socket_channel: ^3.0.2
+  connectivity_plus: ^6.1.1
+
+  # Local Storage
+  shared_preferences: ^2.3.4
+  flutter_secure_storage: ^9.2.3
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # UI Components
+  flutter_svg: ^2.0.16
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  flutter_animate: ^4.5.2
+  google_fonts: ^6.2.1
+
+  # Utils
+  intl: ^0.20.2
+  uuid: ^4.5.1
+  logger: ^2.5.0
+  equatable: ^2.0.7
+  dartz: ^0.10.1
+  timeago: ^3.7.0
+
+  # Environment
+  flutter_dotenv: ^5.2.1
+
+  # Auth
+  flutter_web_auth_2: ^4.0.0
+
+  # Charts
+  fl_chart: ^1.1.1
+
+  # Image/Camera
+  image_picker: ^1.1.2
+  image_cropper: ^8.0.2
+
+  # File handling
+  file_picker: ^8.1.6
+  path_provider: ^2.1.5
+  open_filex: ^4.5.0
+
+  # Share & URL
+  share_plus: ^10.1.3
+  url_launcher: ^6.3.1
+
+  freezed_annotation: any
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+  # Code Generation
+  build_runner: ^2.4.14
+  riverpod_generator: ^2.6.3
+  freezed: ^2.5.8
+  json_serializable: ^6.9.3
+
+  # Testing
+  mocktail: ^1.0.4
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+
+  # Assets - uncomment when you have assets to include
+  # assets:
+  #   - assets/images/
+  #   - assets/icons/
+
+  # Fonts - using Google Fonts package instead
+  # If you want local fonts, download them and uncomment:
+  # fonts:
+  #   - family: Sora
+  #     fonts:
+  #       - asset: assets/fonts/Sora-Regular.ttf
+  #       - asset: assets/fonts/Sora-Bold.ttf
+  #         weight: 700
+  #   - family: Outfit
+  #     fonts:
+  #       - asset: assets/fonts/Outfit-Regular.ttf
+  #       - asset: assets/fonts/Outfit-Medium.ttf
+  #         weight: 500

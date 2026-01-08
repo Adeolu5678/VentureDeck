@@ -8,6 +8,7 @@ import { ArrowLeft, Send, Image as ImageIcon } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { Id } from '@convex/_generated/dataModel';
 import Image from 'next/image';
+import { toast } from 'sonner';
 
 export default function ConversationPage() {
   const params = useParams();
@@ -48,11 +49,11 @@ export default function ConversationPage() {
 
 
   if (conversation === undefined || messages === undefined || user === undefined) {
-    return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading...</div>;
+    return <div className="min-h-screen bg-background text-foreground flex items-center justify-center">Loading...</div>;
   }
 
   if (conversation === null) {
-    return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Conversation not found.</div>;
+    return <div className="min-h-screen bg-background text-foreground flex items-center justify-center">Conversation not found.</div>;
   }
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -112,7 +113,7 @@ export default function ConversationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Header */}
       <header className="bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center">
@@ -238,40 +239,56 @@ export default function ConversationPage() {
 
 function AcceptButton({ applicationId }: { applicationId: Id<'applications'> }) {
   const acceptApplication = useMutation(api.applications.accept);
+  const [isPending, setIsPending] = useState(false);
 
   const handleAccept = async () => {
-    if (confirm('Accept this applicant? They will be added to the workspace.')) {
+    setIsPending(true);
+    try {
       await acceptApplication({ applicationId });
-      alert('Applicant accepted!');
+      toast.success('Applicant accepted and added to workspace!');
+    } catch (error) {
+      console.error('Failed to accept application:', error);
+      toast.error('Failed to accept applicant');
+    } finally {
+      setIsPending(false);
     }
   };
 
   return (
     <button 
       onClick={handleAccept}
-      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
+      disabled={isPending}
+      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
     >
-      Accept
+      {isPending ? 'Accepting...' : 'Accept'}
     </button>
   );
 }
 
 function RejectButton({ applicationId }: { applicationId: Id<'applications'> }) {
-    const rejectApplication = useMutation(api.applications.reject);
-  
-    const handleReject = async () => {
-      if (confirm('Reject this applicant? The conversation will be closed.')) {
-        await rejectApplication({ applicationId });
-        alert('Applicant rejected.');
-      }
-    };
-  
-    return (
-      <button 
-        onClick={handleReject}
-        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors"
-      >
-        Reject
-      </button>
-    );
-  }
+  const rejectApplication = useMutation(api.applications.reject);
+  const [isPending, setIsPending] = useState(false);
+
+  const handleReject = async () => {
+    setIsPending(true);
+    try {
+      await rejectApplication({ applicationId });
+      toast.success('Applicant rejected. Conversation closed.');
+    } catch (error) {
+      console.error('Failed to reject application:', error);
+      toast.error('Failed to reject applicant');
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <button 
+      onClick={handleReject}
+      disabled={isPending}
+      className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+    >
+      {isPending ? 'Rejecting...' : 'Reject'}
+    </button>
+  );
+}

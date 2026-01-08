@@ -116,3 +116,43 @@ export const reject = mutation({
     });
   },
 });
+
+// List pending certifications with user details (Admin only)
+export const listPendingWithUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const currentUser = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!currentUser || !currentUser.isAdmin) return [];
+
+    const certs = await ctx.db
+      .query('certifications')
+      .withIndex('by_status', (q) => q.eq('status', 'pending'))
+      .collect();
+
+    // Fetch user details for each certification
+    const certsWithUsers = await Promise.all(
+      certs.map(async (cert) => {
+        const user = await ctx.db.get(cert.userId);
+        return {
+          ...cert,
+          user: user ? {
+            _id: user._id,
+            username: user.username,
+            displayName: user.displayName,
+            avatarUrl: user.avatarUrl,
+            email: user.email,
+          } : null,
+        };
+      })
+    );
+
+    return certsWithUsers;
+  },
+});

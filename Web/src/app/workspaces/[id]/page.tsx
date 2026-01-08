@@ -8,6 +8,7 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Send, User, Hash, Plus, Lock, X, Link as LinkIcon } from 'lucide-react';
+import { PremiumButton } from '@/components/ui/PremiumButton';
 import MemberMenu from '@/components/MemberMenu';
 import ChannelMenu from '@/components/ChannelMenu';
 import { toast } from 'sonner';
@@ -68,7 +69,10 @@ export default function WorkspacePage() {
 
     if (isOwner) {
       setActions(
-        <button 
+        <PremiumButton 
+          variant="primary"
+          className="flex-1 rounded-full"
+          leftIcon={<Plus className="w-4 h-4" />}
           onClick={async () => {
             try {
               const code = await generateInviteCode({ workspaceId });
@@ -79,19 +83,16 @@ export default function WorkspacePage() {
               toast.error('Failed to generate link');
             }
           }}
-          className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center text-sm"
         >
-          <Plus className="w-4 h-4 mr-2" />
           Invite
-        </button>
+        </PremiumButton>
       );
     } else {
       setActions(
-        <Link 
-          href={`/projects/${workspace.projectId}`}
-          className="flex-1 py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm"
-        >
-          View Project
+        <Link href={`/projects/${workspace.projectId}`} className="flex-1">
+          <PremiumButton variant="secondary" className="w-full rounded-full">
+            View Project
+          </PremiumButton>
         </Link>
       );
     }
@@ -142,7 +143,7 @@ export default function WorkspacePage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 text-white overflow-hidden relative">
+    <div className="flex h-screen text-white overflow-hidden relative">
       {/* Sidebar */}
       <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
         <div className="p-4 border-b border-slate-800">

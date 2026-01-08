@@ -4,7 +4,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, DollarSign, PieChart, MessageSquare, Send, CheckCircle, Globe, Shield, User } from 'lucide-react';
+import { ArrowLeft, DollarSign, PieChart, MessageSquare, Send, CheckCircle, Globe, Shield, User, FileText, Heart, TrendingUp, Users, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { Id, Doc } from '@convex/_generated/dataModel';
 import Image from 'next/image';
@@ -12,6 +12,9 @@ import MemberMenu from '@/components/MemberMenu';
 import { toast } from 'sonner';
 import { useBottomNav } from '@/context/BottomNavContext';
 import { useEffect, useCallback } from 'react';
+import { PremiumButton } from '@/components/ui/PremiumButton';
+import { PremiumCard } from '@/components/ui/PremiumCard';
+import { PitchDeckViewer } from '@/components/PitchDeckViewer';
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -21,9 +24,14 @@ export default function ProjectDetailPage() {
   const user = useQuery(api.users.getCurrentUser);
   const project = useQuery(api.projects.get, { id: projectId });
   const myApplication = useQuery(api.applications.getMyApplicationStatus, { projectId });
+  const isFollowing = useQuery(api.project_followers.isFollowing, { projectId });
+  const followerCount = useQuery(api.project_followers.getFollowerCount, { projectId }) ?? 0;
+  const tractionScore = useQuery(api.milestones.getTractionScore, { projectId }) ?? 0;
   
   const apply = useMutation(api.applications.create);
   const createDirectMessage = useMutation(api.conversations.createDirectMessage);
+  const followProject = useMutation(api.project_followers.follow);
+  const unfollowProject = useMutation(api.project_followers.unfollow);
 
   const [isApplying, setIsApplying] = useState(false);
   const [applicationRole, setApplicationRole] = useState('');
@@ -68,48 +76,38 @@ export default function ProjectDetailPage() {
     }
   }, [user, project, createDirectMessage, router]);
 
-
-
   useEffect(() => {
     let action = null;
 
     if (isOwner) {
       action = (
-        <Link 
-          href={`/projects/${projectId}/edit`}
-          className="flex-1 py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white text-center rounded-full font-medium transition-all text-sm"
-        >
-          Edit Project
+        <Link href={`/projects/${projectId}/edit`} className="flex-1">
+          <PremiumButton variant="glass" className="w-full">Edit Project</PremiumButton>
         </Link>
       );
     } else if (isInvestor) {
       action = (
-        <button 
+        <PremiumButton 
           onClick={handleContactFounder}
-          className="flex-1 py-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full font-bold transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 flex items-center justify-center text-sm"
+          variant="primary" 
+          className="flex-1"
+          leftIcon={<MessageSquare className="w-4 h-4" />}
         >
-          <MessageSquare className="w-4 h-4 mr-2" />
           Contact Founder
-        </button>
+        </PremiumButton>
       );
     } else if (isEntrepreneur) {
       if (!applicationSent || myApplication?.status === 'rejected') {
          action = (
-            <button 
+            <PremiumButton 
               onClick={() => setIsApplying(true)}
-              className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center text-sm"
+              variant="primary" 
+              className="flex-1"
+              leftIcon={<Send className="w-4 h-4" />}
             >
-              <Send className="w-4 h-4 mr-2" />
               {myApplication?.status === 'rejected' ? 'Re-apply' : 'Apply'}
-            </button>
+            </PremiumButton>
          );
-      } else {
-        action = (
-          <div className="flex-1 py-2 px-4 bg-emerald-900/20 border border-emerald-500/20 text-emerald-400 rounded-full font-medium flex items-center justify-center text-sm">
-            <CheckCircle className="w-4 h-4 mr-2" />
-            Sent
-          </div>
-        );
       }
     }
 
@@ -117,13 +115,18 @@ export default function ProjectDetailPage() {
     return () => setActions(null);
   }, [isOwner, isInvestor, isEntrepreneur, applicationSent, myApplication, projectId, handleContactFounder, setActions]);
 
-  if (!project) return <div>Loading...</div>;
+  if (!project) return (
+     <div className="min-h-screen flex items-center justify-center">
+       <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+     </div>
+  );
 
   return (
-    <div>
-      {/* Header Image */}
-      <div className="h-64 w-full relative bg-slate-900">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950" />
+    <div className="min-h-screen text-foreground pb-24">
+      {/* Immersive Header */}
+      <div className="relative h-80 bg-slate-900 overflow-hidden">
+         <div className="absolute inset-0 bg-gradient-to-t from-background via-slate-900/50 to-transparent z-10" />
+         <div className="absolute inset-0 bg-noise opacity-10" />
       </div>
 
       <div className="max-w-7xl mx-auto px-6 -mt-32 relative z-10">
@@ -136,7 +139,7 @@ export default function ProjectDetailPage() {
           {/* Main Content */}
           <div className="flex-1">
             <div className="flex items-end gap-6 mb-8">
-              <div className="w-32 h-32 rounded-2xl bg-slate-800 border-4 border-slate-950 shadow-2xl flex items-center justify-center overflow-hidden relative">
+              <div className="w-32 h-32 rounded-2xl bg-slate-800 border-4 border-background shadow-2xl flex items-center justify-center overflow-hidden relative">
                 {project.logoUrl ? (
                   <Image src={project.logoUrl} alt={project.title} fill className="object-cover" />
                 ) : (
@@ -149,50 +152,69 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            <div className="space-y-8">
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
               {/* About */}
-              <div className="glass-panel rounded-2xl p-8">
+              <PremiumCard>
                 <h2 className="text-xl font-bold text-white mb-4">About</h2>
                 <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">{project.description}</p>
                 
                 <div className="mt-8 flex flex-wrap gap-2">
                   {project.tags?.map(tag => (
-                    <span key={tag} className="px-3 py-1 bg-slate-800 text-slate-300 rounded-full text-sm border border-white/5">
+                    <span key={tag} className="px-3 py-1 bg-white/5 text-slate-300 rounded-full text-sm border border-white/10">
                       {tag}
                     </span>
                   ))}
                 </div>
-              </div>
+
+                {/* Pitch Deck Button */}
+                {project.pitchDeckUrl && (
+                  <div className="mt-6 pt-6 border-t border-white/10">
+                    <PitchDeckViewer url={project.pitchDeckUrl} title={`${project.title} Pitch Deck`} />
+                  </div>
+                )}
+              </PremiumCard>
 
               {/* Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="glass-panel rounded-2xl p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
-                      <DollarSign className="w-5 h-5" />
-                    </div>
-                    <span className="text-slate-400 text-sm font-medium">Funding Goal</span>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <PremiumCard variant="glass" className="flex flex-col items-center text-center">
+                  <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 mb-3">
+                    <DollarSign className="w-6 h-6" />
                   </div>
+                  <span className="text-slate-400 text-sm font-medium mb-1">Funding Goal</span>
                   <div className="text-2xl font-bold text-white">${project.fundingGoal.toLocaleString()}</div>
-                </div>
-                <div className="glass-panel rounded-2xl p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                      <PieChart className="w-5 h-5" />
-                    </div>
-                    <span className="text-slate-400 text-sm font-medium">Equity Offered</span>
+                </PremiumCard>
+                
+                <PremiumCard variant="glass" className="flex flex-col items-center text-center">
+                  <div className="p-3 bg-primary/10 rounded-xl text-primary mb-3">
+                    <PieChart className="w-6 h-6" />
                   </div>
+                  <span className="text-slate-400 text-sm font-medium mb-1">Equity Offered</span>
                   <div className="text-2xl font-bold text-white">{project.equityOffered}%</div>
-                </div>
-                <div className="glass-panel rounded-2xl p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
-                      <Globe className="w-5 h-5" />
-                    </div>
-                    <span className="text-slate-400 text-sm font-medium">Industry</span>
+                </PremiumCard>
+                
+                <PremiumCard variant="glass" className="flex flex-col items-center text-center">
+                  <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400 mb-3">
+                    <Globe className="w-6 h-6" />
                   </div>
-                  <div className="text-2xl font-bold text-white">{project.industry}</div>
-                </div>
+                  <span className="text-slate-400 text-sm font-medium mb-1">Industry</span>
+                  <div className="text-lg font-bold text-white">{project.industry}</div>
+                </PremiumCard>
+
+                <PremiumCard variant="glass" className="flex flex-col items-center text-center">
+                  <div className="p-3 bg-amber-500/10 rounded-xl text-amber-400 mb-3">
+                    <TrendingUp className="w-6 h-6" />
+                  </div>
+                  <span className="text-slate-400 text-sm font-medium mb-1">Traction</span>
+                  <div className="text-2xl font-bold text-white">{tractionScore}%</div>
+                </PremiumCard>
+
+                <PremiumCard variant="glass" className="flex flex-col items-center text-center">
+                  <div className="p-3 bg-pink-500/10 rounded-xl text-pink-400 mb-3">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <span className="text-slate-400 text-sm font-medium mb-1">Followers</span>
+                  <div className="text-2xl font-bold text-white">{followerCount}</div>
+                </PremiumCard>
               </div>
 
               {/* Features (Milestones & Bounties) */}
@@ -209,119 +231,115 @@ export default function ProjectDetailPage() {
           {/* Sidebar */}
           <div className="w-full lg:w-80 space-y-6">
             {/* Actions */}
-            <div className="glass-panel rounded-2xl p-6 sticky top-24">
+            <PremiumCard variant="solid" className="sticky top-24">
               <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                 <Shield className="w-5 h-5 text-primary" />
                 Actions
               </h3>
               
-              {isOwner ? (
-                <div className="space-y-3">
-                  {project.workspaceId && (
-                    <Link 
-                      href={`/workspaces/${project.workspaceId}`}
-                      className="block w-full py-3 px-4 bg-primary hover:bg-primary/90 text-white text-center rounded-xl font-medium transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40"
-                    >
-                      Go to Workspace
+              <div className="space-y-3">
+                {isOwner ? (
+                  <>
+                    {project.workspaceId && (
+                      <Link href={`/workspaces/${project.workspaceId}`} className="block">
+                        <PremiumButton className="w-full" variant="primary">Go to Workspace</PremiumButton>
+                      </Link>
+                    )}
+                    <Link href={`/projects/${projectId}/edit`} className="block">
+                      <PremiumButton className="w-full" variant="secondary">Edit Project</PremiumButton>
                     </Link>
-                  )}
-                  <Link 
-                    href={`/projects/${projectId}/edit`}
-                    className="block w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white text-center rounded-xl font-medium transition-all"
-                  >
-                    Edit Project
-                  </Link>
-                </div>
-              ) : isMember ? (
-                 <div className="space-y-3">
-                  {project.workspaceId && (
-                    <Link 
-                      href={`/workspaces/${project.workspaceId}`}
-                      className="block w-full py-3 px-4 bg-primary hover:bg-primary/90 text-white text-center rounded-xl font-medium transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40"
-                    >
-                      Go to Workspace
+                    <Link href={`/projects/${projectId}/legal`} className="block">
+                      <PremiumButton className="w-full" variant="ghost" leftIcon={<FileText className="w-4 h-4" />}>Legal Documents</PremiumButton>
                     </Link>
-                  )}
-                </div>
-              ) : isInvestor ? (
-                <div className="space-y-3">
-                  <button 
-                    onClick={handleContactFounder}
-                    className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 flex items-center justify-center"
-                  >
-                    <MessageSquare className="w-5 h-5 mr-2" />
-                    Contact Founder
-                  </button>
-                  <Link 
-                    href={`/projects/${projectId}/soft-circles`}
-                    className="w-full py-3.5 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center"
-                  >
-                    <DollarSign className="w-5 h-5 mr-2" />
-                    Soft Circle
-                  </Link>
-                </div>
-              ) : isEntrepreneur ? (
-                !applicationSent || myApplication?.status === 'rejected' ? (
-                  !isApplying ? (
-                    <button 
-                      onClick={() => setIsApplying(true)}
-                      className="w-full py-3.5 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center"
+                  </>
+                ) : isMember ? (
+                   <>
+                    {project.workspaceId && (
+                      <Link href={`/workspaces/${project.workspaceId}`} className="block">
+                         <PremiumButton className="w-full" variant="primary">Go to Workspace</PremiumButton>
+                      </Link>
+                    )}
+                  </>
+                ) : isInvestor ? (
+                  <>
+                    {/* Follow Button */}
+                    <PremiumButton 
+                      onClick={async () => {
+                        try {
+                          if (isFollowing) {
+                            await unfollowProject({ projectId });
+                            toast.success('Unfollowed project');
+                          } else {
+                            await followProject({ projectId });
+                            toast.success('Following project! You\'ll get updates.');
+                          }
+                        } catch {
+                          toast.error('Failed to update follow status');
+                        }
+                      }} 
+                      className="w-full" 
+                      variant={isFollowing ? 'ghost' : 'secondary'}
+                      leftIcon={<Heart className={`w-4 h-4 ${isFollowing ? 'fill-current text-red-500' : ''}`} />}
                     >
-                      <Send className="w-5 h-5 mr-2" />
-                      {myApplication?.status === 'rejected' ? 'Re-apply to Join' : 'Apply to Join'}
-                    </button>
+                      {isFollowing ? 'Following' : 'Follow Project'}
+                    </PremiumButton>
+                    <PremiumButton onClick={handleContactFounder} className="w-full" variant="primary" leftIcon={<MessageSquare className="w-4 h-4" />}>
+                      Contact Founder
+                    </PremiumButton>
+                    <Link href={`/projects/${projectId}/soft-circles`} className="block">
+                       <PremiumButton className="w-full" variant="gradient" leftIcon={<DollarSign className="w-4 h-4" />}>
+                        Soft Circle
+                      </PremiumButton>
+                    </Link>
+                  </>
+                ) : isEntrepreneur ? (
+                  !applicationSent || myApplication?.status === 'rejected' ? (
+                    !isApplying ? (
+                       <PremiumButton onClick={() => setIsApplying(true)} className="w-full" variant="primary" leftIcon={<Send className="w-4 h-4" />}>
+                         {myApplication?.status === 'rejected' ? 'Re-apply to Join' : 'Apply to Join'}
+                       </PremiumButton>
+                    ) : (
+                      <form onSubmit={handleApply} className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-400 mb-1.5">Role</label>
+                          <input 
+                            type="text" 
+                            value={applicationRole}
+                            onChange={(e) => setApplicationRole(e.target.value)}
+                            placeholder="e.g. CTO, Developer"
+                            className="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary transition-colors"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-400 mb-1.5">Message</label>
+                          <textarea 
+                            value={applicationMessage}
+                            onChange={(e) => setApplicationMessage(e.target.value)}
+                            placeholder="Why are you a good fit?"
+                            className="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary h-24 resize-none transition-colors"
+                            required
+                          />
+                        </div>
+                        <div className="flex gap-3">
+                           <PremiumButton type="button" variant="ghost" className="flex-1" onClick={() => setIsApplying(false)}>Cancel</PremiumButton>
+                           <PremiumButton type="submit" variant="primary" className="flex-1">Send</PremiumButton>
+                        </div>
+                      </form>
+                    )
                   ) : (
-                    <form onSubmit={handleApply} className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1.5">Role</label>
-                        <input 
-                          type="text" 
-                          value={applicationRole}
-                          onChange={(e) => setApplicationRole(e.target.value)}
-                          placeholder="e.g. CTO, Developer"
-                          className="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1.5">Message</label>
-                        <textarea 
-                          value={applicationMessage}
-                          onChange={(e) => setApplicationMessage(e.target.value)}
-                          placeholder="Why are you a good fit?"
-                          className="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 h-24 resize-none transition-colors"
-                          required
-                        />
-                      </div>
-                      <div className="flex gap-3">
-                        <button 
-                          type="button"
-                          onClick={() => setIsApplying(false)}
-                          className="flex-1 py-2.5 glass-button text-slate-300 rounded-xl text-sm font-medium"
-                        >
-                          Cancel
-                        </button>
-                        <button 
-                          type="submit"
-                          className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-medium shadow-lg shadow-primary/20"
-                        >
-                          Send
-                        </button>
-                      </div>
-                    </form>
+                    <div className="w-full py-4 px-4 bg-emerald-900/20 border border-emerald-500/20 text-emerald-400 rounded-xl font-medium flex items-center justify-center">
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Application Sent
+                    </div>
                   )
                 ) : (
-                  <div className="w-full py-4 px-4 bg-emerald-900/20 border border-emerald-500/20 text-emerald-400 rounded-xl font-medium flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 mr-2" />
-                    Application Sent
+                  <div className="text-center text-slate-500 text-sm p-4 bg-slate-900/50 rounded-xl border border-white/5">
+                    Log in to interact with this project.
                   </div>
-                )
-              ) : (
-                <div className="text-center text-slate-500 text-sm p-4 bg-slate-900/50 rounded-xl border border-white/5">
-                  Log in to interact with this project.
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </PremiumCard>
           </div>
         </div>
       </div>
@@ -350,7 +368,7 @@ function TeamSection({ projectId, isOwner }: { projectId: Id<'projects'>, isOwne
   };
 
   return (
-    <div className="glass-panel rounded-2xl p-6">
+    <PremiumCard>
       <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
         <User className="w-5 h-5 text-primary" />
         Team
@@ -378,7 +396,7 @@ function TeamSection({ projectId, isOwner }: { projectId: Id<'projects'>, isOwne
           />
         ))}
       </div>
-    </div>
+    </PremiumCard>
   );
 }
 
@@ -390,29 +408,31 @@ function FeaturesSection({ projectId }: { projectId: Id<'projects'> }) {
   if (!milestones && !bounties) return null;
 
   return (
-    <div className="glass-panel rounded-2xl p-6">
+    <PremiumCard>
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold text-white flex items-center gap-2">
           <CheckCircle className="w-5 h-5 text-primary" />
           Project Roadmap & Bounties
         </h3>
-        <div className="flex bg-slate-900 rounded-lg p-1">
-          <button
-            onClick={() => setActiveTab('milestones')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-              activeTab === 'milestones' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Milestones
-          </button>
-          <button
-            onClick={() => setActiveTab('bounties')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-              activeTab === 'bounties' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Bounties
-          </button>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-slate-900 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('milestones')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                activeTab === 'milestones' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Milestones
+            </button>
+            <button
+              onClick={() => setActiveTab('bounties')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                activeTab === 'bounties' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Bounties
+            </button>
+          </div>
         </div>
       </div>
 
@@ -421,48 +441,73 @@ function FeaturesSection({ projectId }: { projectId: Id<'projects'> }) {
           milestones?.length === 0 ? (
             <div className="text-center text-slate-500 py-4">No milestones yet.</div>
           ) : (
-            milestones?.map((m) => (
-              <div key={m._id} className="p-4 bg-slate-900/50 rounded-xl border border-white/5">
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-medium text-white">{m.title}</h4>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                    m.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
-                    m.status === 'verified' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                    'bg-slate-700 text-slate-300 border-slate-600'
-                  }`}>
-                    {m.status}
-                  </span>
+            <>
+              {milestones?.slice(0, 3).map((m) => (
+                <div key={m._id} className="p-4 bg-slate-900/50 rounded-xl border border-white/5">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-medium text-white">{m.title}</h4>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                      m.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
+                      m.status === 'verified' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                      'bg-slate-700 text-slate-300 border-slate-600'
+                    }`}>
+                      {m.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-400 mb-2">{m.description}</p>
+                  <div className="text-xs text-slate-500">Target: {new Date(m.date).toLocaleDateString()}</div>
                 </div>
-                <p className="text-sm text-slate-400 mb-2">{m.description}</p>
-                <div className="text-xs text-slate-500">Target: {new Date(m.date).toLocaleDateString()}</div>
-              </div>
-            ))
+              ))}
+              {/* View All Milestones Link */}
+              <Link 
+                href={`/projects/${projectId}/milestones`}
+                className="flex items-center justify-center gap-2 py-3 text-sm font-medium text-primary hover:text-indigo-300 bg-primary/5 hover:bg-primary/10 rounded-xl transition-all border border-primary/10 hover:border-primary/20"
+              >
+                View All Milestones ({milestones?.length})
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </>
           )
         ) : (
           bounties?.length === 0 ? (
             <div className="text-center text-slate-500 py-4">No open bounties.</div>
           ) : (
-            bounties?.map((b) => (
-              <div key={b._id} className="p-4 bg-slate-900/50 rounded-xl border border-white/5">
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-medium text-white">{b.title}</h4>
-                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    {b.reward}
-                  </span>
+            <>
+              {bounties?.slice(0, 3).map((b) => (
+                <div key={b._id} className="p-4 bg-slate-900/50 rounded-xl border border-white/5">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-medium text-white">{b.title}</h4>
+                    <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      {b.reward}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-400 mb-2">{b.description}</p>
+                  <div className="flex justify-between items-center text-xs text-slate-500">
+                    <span className="capitalize">{b.status}</span>
+                    {b.status === 'open' && (
+                      <Link 
+                        href={`/projects/${projectId}/bounties`}
+                        className="text-primary hover:text-indigo-300 font-medium flex items-center gap-1"
+                      >
+                        View & Claim <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    )}
+                  </div>
                 </div>
-                <p className="text-sm text-slate-400 mb-2">{b.description}</p>
-                <div className="flex justify-between items-center text-xs text-slate-500">
-                  <span>{b.status}</span>
-                  {b.status === 'open' && (
-                    <button className="text-primary hover:text-indigo-300 font-medium">Claim</button>
-                  )}
-                </div>
-              </div>
-            ))
+              ))}
+              {/* View All Bounties Link */}
+              <Link 
+                href={`/projects/${projectId}/bounties`}
+                className="flex items-center justify-center gap-2 py-3 text-sm font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-xl transition-all border border-emerald-500/10 hover:border-emerald-500/20"
+              >
+                View All Bounties ({bounties?.length})
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </>
           )
         )}
       </div>
-    </div>
+    </PremiumCard>
   );
 }
 
@@ -472,7 +517,7 @@ function SoftCirclesSection({ projectId }: { projectId: Id<'projects'> }) {
   if (!softCircles || softCircles.length === 0) return null;
 
   return (
-    <div className="glass-panel rounded-2xl p-6">
+    <PremiumCard>
       <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
         <DollarSign className="w-5 h-5 text-emerald-400" />
         Soft Circle Commitments
@@ -482,7 +527,7 @@ function SoftCirclesSection({ projectId }: { projectId: Id<'projects'> }) {
           <SoftCircleItem key={sc._id} softCircle={sc} />
         ))}
       </div>
-    </div>
+    </PremiumCard>
   );
 }
 

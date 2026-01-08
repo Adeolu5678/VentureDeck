@@ -6,6 +6,7 @@ import { Id } from '@convex/_generated/dataModel';
 import { useUser } from '@clerk/nextjs';
 import { useState } from 'react';
 import { Briefcase, Shield, User } from 'lucide-react';
+import { PremiumButton } from '@/components/ui/PremiumButton';
 import Link from 'next/link';
 import Image from 'next/image';
 import { shortenUrl } from '@/lib/utils';
@@ -50,12 +51,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setActions(
-      <Link 
-        href="/settings" 
-        className="flex-1 py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm"
-      >
-        <Settings className="w-4 h-4 mr-2" />
-        Edit Profile
+      <Link href="/settings" className="flex-1">
+        <PremiumButton 
+          variant="secondary" 
+          className="w-full rounded-full"
+          leftIcon={<Settings className="w-4 h-4" />}
+        >
+          Edit Profile
+        </PremiumButton>
       </Link>
     );
     return () => setActions(null);

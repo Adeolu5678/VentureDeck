@@ -116,25 +116,65 @@ export const update = mutation({
   },
 });
 
-// List projects for the discovery feed
+// List projects for the discovery feed with pagination and search
 export const list = query({
   args: {
     industry: v.optional(v.string()),
-    // Add more filters as needed
+    search: v.optional(v.string()),
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let q = ctx.db.query('projects').withIndex('by_status', (q) => q.eq('status', 'published'));
-
-    if (args.industry) {
-      // Note: This simple filter might need a compound index or client-side filtering if complex
-      // For MVP, we'll filter in memory if the index isn't perfect, or use the specific index
-      // But we defined 'by_industry_status' so we can use that!
-      q = ctx.db
+    const limit = args.limit ?? 20;
+    const offset = args.offset ?? 0;
+    
+    let projects;
+    
+    // Use search index if search term is provided
+    if (args.search && args.search.trim().length > 0) {
+      // Use the search index for efficient text search
+      const searchResults = await ctx.db
         .query('projects')
-        .withIndex('by_industry_status', (q) => q.eq('industry', args.industry!).eq('status', 'published'));
+        .withSearchIndex('search_projects', (q) => {
+          let query = q.search('title', args.search!);
+          // Apply status filter
+          query = query.eq('status', 'published');
+          // Apply industry filter if provided
+          if (args.industry) {
+            query = query.eq('industry', args.industry);
+          }
+          return query;
+        })
+        .take(limit + offset);
+      
+      projects = searchResults;
+    } else if (args.industry) {
+      // Use compound index for industry + status filter
+      projects = await ctx.db
+        .query('projects')
+        .withIndex('by_industry_status', (q) => q.eq('industry', args.industry!).eq('status', 'published'))
+        .collect();
+    } else {
+      // Default: all published projects
+      projects = await ctx.db
+        .query('projects')
+        .withIndex('by_status', (q) => q.eq('status', 'published'))
+        .collect();
     }
 
-    return await q.collect();
+    // Sort by newest first (if not using search index which already may have relevance sorting)
+    if (!args.search) {
+      projects.sort((a, b) => b.createdAt - a.createdAt);
+    }
+
+    // Apply pagination
+    const paginatedProjects = projects.slice(offset, offset + limit);
+
+    return {
+      projects: paginatedProjects,
+      total: projects.length,
+      hasMore: offset + limit < projects.length,
+    };
   },
 });
 

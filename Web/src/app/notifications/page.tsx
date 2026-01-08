@@ -1,57 +1,71 @@
 'use client';
 
 import { Id } from '@convex/_generated/dataModel';
-
+import { useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
-import { Bell, Check, ExternalLink } from 'lucide-react';
+import { Bell, Check, ExternalLink, CheckCheck, Home } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { useBottomNav } from '@/context/BottomNavContext';
+import { PremiumButton } from '@/components/ui/PremiumButton';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function NotificationsPage() {
   const notifications = useQuery(api.notifications.list);
   const markAsRead = useMutation(api.notifications.markAsRead);
   const markAllAsRead = useMutation(api.notifications.markAllAsRead);
+  const { setActions } = useBottomNav();
+
+  const unreadCount = notifications?.filter(n => !n.read).length || 0;
+
+  // Set bottom nav actions - context aligned with notifications
+  useEffect(() => {
+    setActions(
+      <div className="flex items-center gap-2 flex-1">
+        <Link href="/dashboard" className="flex-1">
+          <PremiumButton
+            variant="glass"
+            className="w-full rounded-full"
+            leftIcon={<Home className="w-4 h-4" />}
+          >
+            Dashboard
+          </PremiumButton>
+        </Link>
+        {unreadCount > 0 && (
+          <PremiumButton
+            onClick={async () => await markAllAsRead()}
+            variant="primary"
+            className="flex-1 rounded-full"
+            leftIcon={<CheckCheck className="w-4 h-4" />}
+          >
+            Mark All Read
+          </PremiumButton>
+        )}
+      </div>
+    );
+    return () => setActions(null);
+  }, [setActions, unreadCount, markAllAsRead]);
 
   if (notifications === undefined) {
-    return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading...</div>;
+    return <div className="min-h-screen text-white flex items-center justify-center">Loading...</div>;
   }
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleMarkAsRead = async (id: Id<'notifications'>) => {
     await markAsRead({ notificationId: id });
   };
 
-  const handleMarkAllAsRead = async () => {
-    await markAllAsRead();
-  };
-
   return (
-    <div className="min-h-screen bg-slate-950 text-white pb-20">
+    <div className="min-h-screen text-white pb-24">
       <div className="max-w-3xl mx-auto px-6 py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-              <Bell className="w-5 h-5 text-primary" />
-            </div>
-            <h1 className="text-2xl font-bold">Notifications</h1>
-            {unreadCount > 0 && (
-              <span className="bg-primary text-white text-xs font-bold px-2 py-1 rounded-full">
-                {unreadCount} New
-              </span>
-            )}
-          </div>
-          {unreadCount > 0 && (
-            <button 
-              onClick={handleMarkAllAsRead}
-              className="text-sm text-slate-400 hover:text-white flex items-center gap-2 transition-colors"
-            >
-              <Check className="w-4 h-4" />
-              Mark all as read
-            </button>
-          )}
-        </div>
+        <PageHeader 
+          title="Notifications" 
+          description={unreadCount > 0 ? `You have ${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}` : "You're all caught up!"}
+          breadcrumbs={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Notifications" }
+          ]}
+        />
 
         <div className="space-y-4">
           {notifications.length === 0 ? (
@@ -97,8 +111,9 @@ export default function NotificationsPage() {
                       {!notification.read && (
                         <button 
                           onClick={() => handleMarkAsRead(notification._id)}
-                          className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                          className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1"
                         >
+                          <Check className="w-3 h-3" />
                           Mark as read
                         </button>
                       )}

@@ -6,18 +6,20 @@ import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search, TrendingUp, Users, ArrowRight, Sparkles } from 'lucide-react';
+import { Plus, Search, TrendingUp, Users, ArrowRight, Sparkles, LayoutDashboard, Heart } from 'lucide-react';
 import Image from 'next/image';
 import MatchmakingWidget from '@/components/MatchmakingWidget';
-import { useBottomNav } from '@/context/BottomNavContext';
+import { ActivityFeed } from '@/components/ActivityFeed';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { PremiumCard } from '@/components/ui/PremiumCard';
+import { PremiumButton } from '@/components/ui/PremiumButton';
+import { useRef } from 'react';
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   
-  // Fetch current user from Convex to get role
   const convexUser = useQuery(api.users.getCurrentUser);
-
   const createUser = useMutation(api.users.createOrUpdateUser);
 
   useEffect(() => {
@@ -25,9 +27,6 @@ export default function DashboardPage() {
       router.push('/');
     }
   }, [isLoaded, user, router]);
-
-  // Removed auto-sync useEffect to rely on Webhooks and avoid race conditions.
-  // Manual sync is now provided in the UI fallback below.
 
   if (!isLoaded) return null;
   if (!user) return null;
@@ -40,9 +39,6 @@ export default function DashboardPage() {
     );
   }
 
-  // If user has no role, we might need to prompt them. 
-  // For now, let's assume they are an Entrepreneur if undefined, or show a selection screen.
-  // Handle case where user is logged in to Clerk but not yet in Convex (webhook delay)
   if (convexUser === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
@@ -51,7 +47,6 @@ export default function DashboardPage() {
           <h2 className="text-xl font-bold mb-2">Setting up your account...</h2>
           <p className="text-muted-foreground mb-4">Please wait while we prepare your workspace.</p>
           
-          {/* Manual Fallback if Webhook is slow/missed */}
           <button 
             onClick={async () => {
               try {
@@ -76,7 +71,6 @@ export default function DashboardPage() {
     );
   }
 
-  // If user has no role, prompt selection
   if (!convexUser.role) {
     return <RoleSelection />;
   }
@@ -84,21 +78,21 @@ export default function DashboardPage() {
   const isEntrepreneur = convexUser.role === 'entrepreneur';
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        <header className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <h1 className="text-4xl font-bold mb-2">
-            Welcome back, <span className="text-gradient">{convexUser.firstName || convexUser.username}</span>
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            {isEntrepreneur 
-              ? "Your venture awaits. What will you build today?" 
-              : "Discover the next generation of unicorns."}
-          </p>
-        </header>
+    <div className="min-h-screen text-foreground pb-24">
+      <div className="relative pt-12 px-6 max-w-7xl mx-auto">
+        <PageHeader 
+          title={`Welcome back, ${convexUser.firstName || convexUser.username}`}
+          description={isEntrepreneur 
+            ? "Your venture awaits. What will you build today?" 
+            : "Discover the next generation of unicorns."
+          }
+          breadcrumbs={[
+             { label: "Dashboard" }
+          ]}
+        />
 
         {isEntrepreneur ? <EntrepreneurDashboard /> : <InvestorDashboard />}
-      </main>
+      </div>
     </div>
   );
 }
@@ -111,7 +105,6 @@ function RoleSelection() {
     setIsSubmitting(true);
     try {
       await setRole({ role });
-      // The query in the parent component will automatically update and switch the view
     } catch (error) {
       console.error("Failed to set role:", error);
       setIsSubmitting(false);
@@ -120,39 +113,47 @@ function RoleSelection() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background text-foreground">
-      <div className="max-w-xl w-full p-10 glass-panel rounded-3xl text-center animate-in zoom-in-95 duration-500">
-        <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Sparkles className="w-8 h-8 text-primary" />
-        </div>
-        <h2 className="text-3xl font-bold mb-4">Choose Your Path</h2>
-        <p className="text-muted-foreground mb-10 text-lg">
-          VentureDeck is a dual-sided marketplace. <br/> How will you participate?
-        </p>
-        <div className="grid md:grid-cols-2 gap-4">
-          <button 
-            onClick={() => handleRoleSelect('entrepreneur')}
-            disabled={isSubmitting}
-            className="group relative p-6 glass-button rounded-2xl text-left hover:border-primary/50 transition-all"
-          >
-            <div className="mb-4 w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <TrendingUp className="w-5 h-5 text-primary" />
-            </div>
-            <h3 className="font-bold text-lg mb-1">Entrepreneur</h3>
-            <p className="text-sm text-muted-foreground">I want to raise capital and build a startup.</p>
-          </button>
-          
-          <button 
-            onClick={() => handleRoleSelect('investor')}
-            disabled={isSubmitting}
-            className="group relative p-6 glass-button rounded-2xl text-left hover:border-accent/50 transition-all"
-          >
-            <div className="mb-4 w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Users className="w-5 h-5 text-accent" />
-            </div>
-            <h3 className="font-bold text-lg mb-1">Investor</h3>
-            <p className="text-sm text-muted-foreground">I want to find and fund high-growth startups.</p>
-          </button>
-        </div>
+      <div className="max-w-xl w-full">
+        <PremiumCard className="text-center">
+          <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Sparkles className="w-8 h-8 text-primary" />
+          </div>
+          <h2 className="text-3xl font-bold mb-4 text-white">Choose Your Path</h2>
+          <p className="text-muted-foreground mb-10 text-lg">
+            VentureDeck is a dual-sided marketplace. <br/> How will you participate?
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <PremiumButton 
+               variant="glass" 
+               className="h-auto p-6 flex flex-col items-start gap-4 hover:border-primary/50"
+               onClick={() => handleRoleSelect('entrepreneur')}
+               disabled={isSubmitting}
+            >
+              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-bold text-lg text-white mb-1">Entrepreneur</h3>
+                <p className="text-xs text-muted-foreground">Raise capital & build startup.</p>
+              </div>
+            </PremiumButton>
+            
+            <PremiumButton 
+               variant="glass" 
+               className="h-auto p-6 flex flex-col items-start gap-4 hover:border-accent/50"
+               onClick={() => handleRoleSelect('investor')}
+               disabled={isSubmitting}
+            >
+              <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+                <Users className="w-5 h-5 text-accent" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-bold text-lg text-white mb-1">Investor</h3>
+                <p className="text-xs text-muted-foreground">Find & fund unicorns.</p>
+              </div>
+            </PremiumButton>
+          </div>
+        </PremiumCard>
       </div>
     </div>
   );
@@ -160,82 +161,75 @@ function RoleSelection() {
 
 function EntrepreneurDashboard() {
   const myProjects = useQuery(api.projects.getMyProjects) || [];
-  const { setActions } = useBottomNav();
 
-  useEffect(() => {
-    setActions(
-      <Link 
-        href="/projects/create" 
-        className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center text-sm"
-      >
-        <Plus className="w-4 h-4 mr-2" />
-        New Project
-      </Link>
-    );
-    return () => setActions(null);
-  }, [setActions]);
+  // Note: "New Project" button is now in TopNav for entrepreneurs
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <TrendingUp className="w-6 h-6 text-primary" />
-          My Projects
-        </h2>
-        <Link 
-          href="/projects/create" 
-          className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium flex items-center gap-2 transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40"
-        >
-          <Plus className="w-4 h-4" /> New Project
-        </Link>
-      </div>
-
-      {myProjects.length === 0 ? (
-        <div className="p-16 border border-dashed border-border rounded-3xl text-center bg-muted/20 backdrop-blur-sm">
-          <div className="w-20 h-20 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Plus className="w-10 h-10 text-muted-foreground" />
-          </div>
-          <h3 className="text-xl font-bold text-foreground mb-2">No projects yet</h3>
-          <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Your journey begins here. Create your first project to start tracking milestones and attracting investors.
-          </p>
-          <Link 
-            href="/projects/create" 
-            className="px-8 py-4 bg-foreground text-background hover:bg-muted-foreground/90 rounded-full font-bold inline-flex items-center gap-2 transition-all"
-          >
-            Create Project <ArrowRight className="w-5 h-5" />
+    <div className="space-y-12">
+      <section>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
+            <LayoutDashboard className="w-6 h-6 text-primary" />
+            My Projects
+          </h2>
+          <Link href="/projects/create">
+            <PremiumButton variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />}>
+              New Project
+            </PremiumButton>
           </Link>
         </div>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {myProjects.map((project) => (
-            <Link key={project._id} href={`/projects/${project._id}`} className="block group">
-              <div className="glass-panel rounded-2xl p-6 hover:border-primary/50 transition-all h-full group-hover:-translate-y-1">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center text-2xl font-bold text-primary border border-primary/20">
-                    {project.logoUrl ? (
-                      <Image src={project.logoUrl} alt="" width={56} height={56} className="object-cover rounded-xl" />
-                    ) : (
-                      project.title[0]
-                    )}
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
-                    project.status === 'published' 
-                      ? 'bg-accent/10 text-accent border-accent/20' 
-                      : 'bg-muted text-muted-foreground border-border'
-                  }`}>
-                    {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
-                  </span>
-                </div>
-                <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">{project.title}</h3>
-                <p className="text-muted-foreground text-sm line-clamp-2 leading-relaxed">{project.tagline}</p>
-              </div>
+
+        {myProjects.length === 0 ? (
+          <div className="p-16 border border-dashed border-white/10 rounded-3xl text-center bg-white/5 backdrop-blur-sm">
+            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Plus className="w-10 h-10 text-muted-foreground" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">No projects yet</h3>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+              Your journey begins here. Create your first project to start tracking milestones and attracting investors.
+            </p>
+            <Link href="/projects/create">
+              <PremiumButton rightIcon={<ArrowRight className="w-5 h-5" />}>
+                Create Project
+              </PremiumButton>
             </Link>
-          ))}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {myProjects.map((project) => (
+              <Link key={project._id} href={`/projects/${project._id}`}>
+                <PremiumCard glow className="h-full hover:border-primary/50">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center text-2xl font-bold text-primary border border-primary/20 overflow-hidden relative">
+                      {project.logoUrl ? (
+                        <Image src={project.logoUrl} alt={`${project.title} logo`} fill sizes="56px" className="object-cover" />
+                      ) : (
+                        project.title[0]
+                      )}
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide border ${
+                      project.status === 'published' 
+                        ? 'bg-accent/10 text-accent border-accent/20' 
+                        : 'bg-white/5 text-slate-400 border-white/10'
+                    }`}>
+                      {project.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{project.title}</h3>
+                  <p className="text-slate-400 text-sm line-clamp-2 leading-relaxed">{project.tagline}</p>
+                </PremiumCard>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
 
       <JoinedProjectsSection />
+
+      {/* Activity Feed */}
+      <section>
+        <ActivityFeed variant="entrepreneur" />
+      </section>
     </div>
   );
 }
@@ -246,108 +240,184 @@ function JoinedProjectsSection() {
   if (joinedProjects.length === 0) return null;
 
   return (
-    <div className="space-y-6 pt-8 border-t border-border">
-      <h2 className="text-2xl font-bold flex items-center gap-2">
+    <section>
+      <h2 className="text-2xl font-bold flex items-center gap-2 mb-6 text-white">
         <Users className="w-6 h-6 text-accent" />
         Workspaces I&apos;m a Part of
       </h2>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {joinedProjects.map((project) => (
-          <Link key={project._id} href={`/workspaces/${project.workspaceId}`} className="block group">
-            <div className="glass-panel rounded-2xl p-6 hover:border-accent/50 transition-all h-full group-hover:-translate-y-1">
+          <Link key={project._id} href={`/workspaces/${project.workspaceId}`}>
+            <PremiumCard glow className="h-full hover:border-accent/50">
               <div className="flex items-start justify-between mb-6">
-                <div className="w-14 h-14 bg-gradient-to-br from-accent/20 to-primary/20 rounded-xl flex items-center justify-center text-2xl font-bold text-accent border border-accent/20">
+                <div className="w-14 h-14 bg-gradient-to-br from-accent/20 to-primary/20 rounded-xl flex items-center justify-center text-2xl font-bold text-accent border border-accent/20 overflow-hidden relative">
                   {project.logoUrl ? (
-                    <Image src={project.logoUrl} alt="" width={56} height={56} className="object-cover rounded-xl" />
+                    <Image src={project.logoUrl} alt={`${project.title} logo`} fill sizes="56px" className="object-cover" />
                   ) : (
                     project.title[0]
                   )}
                 </div>
-                <span className="px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border">
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-slate-400 border border-white/10">
                   Member
                 </span>
               </div>
-              <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-accent transition-colors">{project.title}</h3>
-              <p className="text-muted-foreground text-sm line-clamp-2 leading-relaxed">{project.tagline}</p>
-            </div>
+              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-accent transition-colors">{project.title}</h3>
+              <p className="text-slate-400 text-sm line-clamp-2 leading-relaxed">{project.tagline}</p>
+            </PremiumCard>
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
 function InvestorDashboard() {
-  const projects = useQuery(api.projects.list, {}) || [];
-  const { setActions } = useBottomNav();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Debounce search term
   useEffect(() => {
-    setActions(
-      <button 
-        onClick={() => (document.querySelector('input[placeholder="Search projects..."]') as HTMLInputElement)?.focus()}
-        className="flex-1 py-2 px-4 bg-accent hover:bg-accent/90 text-white rounded-full font-bold transition-all shadow-lg shadow-accent/20 hover:shadow-accent/40 flex items-center justify-center text-sm"
-      >
-        <Search className="w-4 h-4 mr-2" />
-        Search
-      </button>
-    );
-    return () => setActions(null);
-  }, [setActions]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const projectsData = useQuery(api.projects.list, { 
+    search: debouncedSearch || undefined,
+    limit: 20 
+  });
+  const projects = projectsData?.projects || [];
+
+  // Note: Search functionality is available in the page content directly
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+    <div className="space-y-12">
       {/* AI Matchmaking Widget */}
       <MatchmakingWidget />
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-accent" />
-          Discover
-        </h2>
-        <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-          <input 
-            type="text" 
-            placeholder="Search projects..." 
-            className="pl-11 pr-4 py-2.5 bg-muted/50 border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-64 transition-all"
-          />
-        </div>
-      </div>
+      {/* Projects I'm Following */}
+      <FollowedProjectsSection />
 
+      <section>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
+            <Sparkles className="w-6 h-6 text-accent" />
+            Discover
+            {projectsData?.total !== undefined && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({projectsData.total} projects)
+              </span>
+            )}
+          </h2>
+          <div className="relative group" onClick={() => searchInputRef.current?.focus()}>
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Search projects..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              ref={searchInputRef}
+              className="pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-64 transition-all"
+            />
+          </div>
+        </div>
+
+        {projects.length === 0 && debouncedSearch ? (
+          <div className="p-16 border border-dashed border-white/10 rounded-3xl text-center bg-white/5 backdrop-blur-sm">
+            <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">No projects found</h3>
+            <p className="text-muted-foreground">
+              No projects match &quot;{debouncedSearch}&quot;. Try a different search term.
+            </p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project) => (
+              <Link key={project._id} href={`/projects/${project._id}`}>
+                <PremiumCard glow className="h-full">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center text-2xl font-bold text-primary border border-primary/20 overflow-hidden relative">
+                       {project.logoUrl ? (
+                          <Image src={project.logoUrl} alt={`${project.title} logo`} fill sizes="56px" className="object-cover" />
+                        ) : (
+                          project.title[0]
+                        )}
+                    </div>
+                    <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-lg uppercase tracking-wider">
+                      {project.industry}
+                    </span>
+                  </div>
+                  
+                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{project.title}</h3>
+                  <p className="text-slate-400 text-sm line-clamp-2 mb-6 leading-relaxed">{project.tagline}</p>
+                  
+                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                    <div className="text-sm">
+                      <span className="text-slate-500 block text-xs mb-0.5">Goal</span>
+                      <span className="text-white font-medium">${project.fundingGoal.toLocaleString()}</span>
+                    </div>
+                    <div className="text-sm text-right">
+                      <span className="text-slate-500 block text-xs mb-0.5">Equity</span>
+                      <span className="text-white font-medium">{project.equityOffered}%</span>
+                    </div>
+                  </div>
+                </PremiumCard>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Activity Feed */}
+      <section>
+        <ActivityFeed variant="investor" />
+      </section>
+    </div>
+  );
+}
+
+function FollowedProjectsSection() {
+  const followedProjects = useQuery(api.project_followers.getFollowedProjects) || [];
+
+  if (followedProjects.length === 0) return null;
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
+          <Heart className="w-6 h-6 text-pink-500 fill-current" />
+          Projects I&apos;m Following
+          <span className="text-sm font-normal text-muted-foreground">({followedProjects.length})</span>
+        </h2>
+      </div>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((project) => (
-          <Link key={project._id} href={`/projects/${project._id}`} className="block group">
-            <div className="glass-panel rounded-2xl p-6 hover:border-primary/50 transition-all h-full group-hover:-translate-y-1">
-              <div className="flex items-start justify-between mb-6">
-                <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center text-2xl font-bold text-primary border border-primary/20">
-                   {project.logoUrl ? (
-                      <Image src={project.logoUrl} alt="" width={56} height={56} className="object-cover rounded-xl" />
-                    ) : (
-                      project.title[0]
-                    )}
+        {followedProjects.map((project) => (
+          <Link key={project._id} href={`/projects/${project._id}`}>
+            <PremiumCard glow className="h-full hover:border-pink-500/50">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-pink-500/20 to-primary/20 rounded-xl flex items-center justify-center text-xl font-bold text-pink-400 border border-pink-500/20 overflow-hidden relative">
+                  {project.logoUrl ? (
+                    <Image src={project.logoUrl} alt={`${project.title} logo`} fill sizes="48px" className="object-cover" />
+                  ) : (
+                    project.title[0]
+                  )}
                 </div>
-                <span className="text-xs font-medium text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-lg">
-                  {project.industry}
+                <span className="text-xs font-medium text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2 py-1 rounded-lg">
+                  Following
                 </span>
               </div>
-              
-              <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">{project.title}</h3>
-              <p className="text-muted-foreground text-sm line-clamp-2 mb-6 leading-relaxed">{project.tagline}</p>
-              
-              <div className="flex items-center justify-between pt-4 border-t border-border">
-                <div className="text-sm">
-                  <span className="text-muted-foreground block text-xs mb-0.5">Goal</span>
-                  <span className="text-foreground font-medium">${project.fundingGoal.toLocaleString()}</span>
-                </div>
-                <div className="text-sm text-right">
-                  <span className="text-muted-foreground block text-xs mb-0.5">Equity</span>
-                  <span className="text-foreground font-medium">{project.equityOffered}%</span>
-                </div>
+              <h3 className="text-lg font-bold text-white mb-1 group-hover:text-pink-400 transition-colors">{project.title}</h3>
+              <p className="text-slate-400 text-sm line-clamp-1 mb-3">{project.tagline}</p>
+              <div className="flex items-center justify-between pt-3 border-t border-white/5 text-sm">
+                <span className="text-slate-500">by {project.ownerName}</span>
+                <span className="text-emerald-400 font-medium">${project.fundingGoal.toLocaleString()}</span>
               </div>
-            </div>
+            </PremiumCard>
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

@@ -5,6 +5,7 @@ import { useMutation, useAction, useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { useRouter, useParams } from 'next/navigation';
 import { Upload, ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { PremiumButton } from '@/components/ui/PremiumButton';
 import { Id } from '@convex/_generated/dataModel';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -55,15 +56,16 @@ export default function EditProjectPage() {
 
   useEffect(() => {
     setActions(
-      <button
+      <PremiumButton
         type="submit"
         form="edit-project-form"
         disabled={isSubmitting}
-        className="flex-1 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-full font-bold transition-all flex items-center justify-center text-sm shadow-lg shadow-primary/20 disabled:opacity-50"
+        variant="primary"
+        className="flex-1 rounded-full"
+        leftIcon={isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
       >
-        {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
         Save Changes
-      </button>
+      </PremiumButton>
     );
     return () => setActions(null);
   }, [isSubmitting, setActions]);
