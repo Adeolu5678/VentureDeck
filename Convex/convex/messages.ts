@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
+import { enforceRateLimit } from './rateLimits';
 
 // Send a message to a workspace channel (general)
 export const send = mutation({
@@ -17,6 +18,8 @@ export const send = mutation({
       .unique();
 
     if (!user) throw new Error('User not found');
+
+    await enforceRateLimit(ctx.db, user._id, 'messages');
 
     const workspace = await ctx.db.get(args.workspaceId);
     if (!workspace) throw new Error('Workspace not found');

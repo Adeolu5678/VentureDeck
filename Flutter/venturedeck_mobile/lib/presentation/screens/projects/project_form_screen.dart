@@ -9,7 +9,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:venturedeck_mobile/core/theme/app_theme.dart';
-import 'package:venturedeck_mobile/data/models/project.dart';
 import 'package:venturedeck_mobile/domain/providers/projects_provider.dart';
 import 'package:venturedeck_mobile/presentation/widgets/premium_button.dart';
 import 'package:venturedeck_mobile/presentation/widgets/premium_card.dart';
@@ -53,11 +52,8 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
   final _descriptionController = TextEditingController();
   final _fundingGoalController = TextEditingController();
   final _equityController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _tagsController = TextEditingController();
 
   String? _selectedIndustry;
-  ProjectStage? _selectedStage;
   bool _isLoading = false;
   bool _isInitialized = false;
 
@@ -82,10 +78,7 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
         _descriptionController.text = project.description;
         _fundingGoalController.text = project.fundingGoal.toStringAsFixed(0);
         _equityController.text = project.equityOffered.toString();
-        _locationController.text = project.location ?? '';
-        _tagsController.text = project.tags.join(', ');
         _selectedIndustry = project.industry;
-        _selectedStage = project.stage;
         _isInitialized = true;
       }
     } catch (e) {
@@ -108,8 +101,6 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
     _descriptionController.dispose();
     _fundingGoalController.dispose();
     _equityController.dispose();
-    _locationController.dispose();
-    _tagsController.dispose();
     super.dispose();
   }
 
@@ -125,12 +116,6 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final tags = _tagsController.text
-          .split(',')
-          .map((t) => t.trim())
-          .where((t) => t.isNotEmpty)
-          .toList();
-
       final actions = ref.read(projectActionsProvider.notifier);
 
       if (widget.isEditing) {
@@ -142,11 +127,6 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
           industry: _selectedIndustry!,
           fundingGoal: double.parse(_fundingGoalController.text),
           equityOffered: double.parse(_equityController.text),
-          tags: tags,
-          stage: _selectedStage,
-          location: _locationController.text.isNotEmpty
-              ? _locationController.text
-              : null,
         );
 
         if (success && mounted) {
@@ -163,11 +143,6 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
           industry: _selectedIndustry!,
           fundingGoal: double.parse(_fundingGoalController.text),
           equityOffered: double.parse(_equityController.text),
-          tags: tags,
-          stage: _selectedStage,
-          location: _locationController.text.isNotEmpty
-              ? _locationController.text
-              : null,
         );
 
         if (projectId != null && mounted) {
@@ -297,14 +272,9 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
 
                         const SizedBox(height: AppSpacing.lg),
 
-                        // Stage dropdown
-                        _buildLabel('Stage (Optional)'),
-                        _buildStageDropdown()
-                            .animate(delay: 200.ms)
-                            .fadeIn()
-                            .slideX(begin: -0.1, end: 0),
-
-                        const SizedBox(height: AppSpacing.lg),
+                        // Stage (Unsupported by backend - hidden)
+                        // Location (Unsupported by backend - hidden)
+                        // Tags (Unsupported by backend - hidden)
 
                         // Funding & Equity row
                         Row(
@@ -375,30 +345,6 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
                               ],
                             )
                             .animate(delay: 250.ms)
-                            .fadeIn()
-                            .slideX(begin: -0.1, end: 0),
-
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // Location
-                        _buildLabel('Location (Optional)'),
-                        _buildTextField(
-                              controller: _locationController,
-                              hint: 'e.g., San Francisco, CA',
-                            )
-                            .animate(delay: 300.ms)
-                            .fadeIn()
-                            .slideX(begin: -0.1, end: 0),
-
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // Tags
-                        _buildLabel('Tags (comma separated)'),
-                        _buildTextField(
-                              controller: _tagsController,
-                              hint: 'e.g., B2B, SaaS, AI',
-                            )
-                            .animate(delay: 350.ms)
                             .fadeIn()
                             .slideX(begin: -0.1, end: 0),
 
@@ -503,52 +449,5 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
         onChanged: onChanged,
       ),
     );
-  }
-
-  Widget _buildStageDropdown() {
-    return PremiumCard(
-      padding: EdgeInsets.zero,
-      child: DropdownButtonFormField<ProjectStage>(
-        initialValue: _selectedStage,
-        decoration: InputDecoration(
-          hintText: 'Select stage',
-          hintStyle: AppTypography.bodyMedium.copyWith(
-            color: AppColors.textMuted,
-          ),
-          filled: false,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
-        ),
-        dropdownColor: AppColors.backgroundCard,
-        style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary),
-        items: ProjectStage.values.map((stage) {
-          return DropdownMenuItem(
-            value: stage,
-            child: Text(_getStageDisplayName(stage)),
-          );
-        }).toList(),
-        onChanged: (v) => setState(() => _selectedStage = v),
-      ),
-    );
-  }
-
-  String _getStageDisplayName(ProjectStage stage) {
-    switch (stage) {
-      case ProjectStage.idea:
-        return 'Idea';
-      case ProjectStage.mvp:
-        return 'MVP';
-      case ProjectStage.seed:
-        return 'Seed';
-      case ProjectStage.seriesA:
-        return 'Series A';
-      case ProjectStage.seriesB:
-        return 'Series B';
-      case ProjectStage.growth:
-        return 'Growth';
-    }
   }
 }

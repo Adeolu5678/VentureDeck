@@ -7,6 +7,7 @@ import { FileText, Plus, CheckCircle, Loader2, PenTool } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { useParams } from "next/navigation";
 import { Id, Doc } from "@convex/_generated/dataModel";
+import { logError } from "@/lib/errorTracking";
 
 export default function LegalPage() {
   const params = useParams();
@@ -76,7 +77,7 @@ export default function LegalPage() {
       setInvestorName("");
       setAmount("");
     } catch (error) {
-      console.error("Failed to generate doc:", error);
+      logError(error, { component: 'LegalPage', action: 'generateDocument' });
     } finally {
       setIsGenerating(false);
     }

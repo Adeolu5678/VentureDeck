@@ -29,6 +29,7 @@ import type * as notifications from "../notifications.js";
 import type * as project_followers from "../project_followers.js";
 import type * as projects from "../projects.js";
 import type * as public_stats from "../public_stats.js";
+import type * as rateLimits from "../rateLimits.js";
 import type * as savedSearches from "../savedSearches.js";
 import type * as scoring from "../scoring.js";
 import type * as soft_circles from "../soft_circles.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   project_followers: typeof project_followers;
   projects: typeof projects;
   public_stats: typeof public_stats;
+  rateLimits: typeof rateLimits;
   savedSearches: typeof savedSearches;
   scoring: typeof scoring;
   soft_circles: typeof soft_circles;

@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { Doc, Id } from './_generated/dataModel';
+import { enforceRateLimit } from './rateLimits';
 
 /**
  * Safe user projection type to prevent data leakage.
@@ -40,6 +41,8 @@ export const sendFriendRequest = mutation({
     if (!user) {
       throw new Error('User not found');
     }
+
+    await enforceRateLimit(ctx.db, user._id, 'friendRequests');
 
     // Check if friend exists
     const friend = await ctx.db.get(args.friendId);

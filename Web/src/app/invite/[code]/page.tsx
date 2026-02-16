@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, ArrowRight, XCircle } from 'lucide-react';
+import { logError } from '@/lib/errorTracking';
 
 export default function InvitePage() {
   const params = useParams();
@@ -26,7 +27,7 @@ export default function InvitePage() {
       toast.success('Joined workspace successfully');
       router.push(`/workspaces/${workspaceId}`);
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'InvitePage', action: 'joinWorkspace' });
       toast.error('Failed to join workspace');
       setIsJoining(false);
     }

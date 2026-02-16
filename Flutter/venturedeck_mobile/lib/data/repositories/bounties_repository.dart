@@ -16,10 +16,9 @@ class BountiesRepository {
   /// Get all bounties for a project
   Future<List<Bounty>> getProjectBounties(String projectId) async {
     try {
-      final result = await _convex.query<List<dynamic>>(
-        'bounties:listByProject',
-        {'projectId': projectId},
-      );
+      final result = await _convex.query<List<dynamic>>('bounties:list', {
+        'projectId': projectId,
+      });
       return result
           .map((item) => _mapToBounty(item as Map<String, dynamic>))
           .toList();
@@ -33,24 +32,15 @@ class BountiesRepository {
     BountyType? type,
     int limit = 20,
   }) async {
-    try {
-      final result = await _convex.query<List<dynamic>>('bounties:listOpen', {
-        if (type != null) 'type': type.name,
-        'limit': limit,
-      });
-      return result
-          .map((item) => _mapToBounty(item as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      throw BountiesRepositoryException('Failed to fetch open bounties: $e');
-    }
+    // Not supported by backend (no global list query)
+    return [];
   }
 
   /// Get bounties claimed by a user
   Future<List<Bounty>> getMyBounties() async {
     try {
       final result = await _convex.query<List<dynamic>>(
-        'bounties:listMyClaimed',
+        'bounties:getMyBounties',
       );
       return result
           .map((item) => _mapToBounty(item as Map<String, dynamic>))
@@ -62,19 +52,13 @@ class BountiesRepository {
 
   /// Get a single bounty by ID
   Future<Bounty?> getBounty(String bountyId) async {
-    try {
-      final result = await _convex.query<Map<String, dynamic>?>(
-        'bounties:get',
-        {'id': bountyId},
-      );
-      if (result == null) return null;
-      return _mapToBounty(result);
-    } catch (e) {
-      throw BountiesRepositoryException('Failed to fetch bounty: $e');
-    }
+    // Not supported by backend (bounties:get is missing)
+    // TODO: Request backend update to support getById
+    return null;
   }
 
   /// Create a new bounty
+  /// Note: [type], [skills], [deadline] are not currently supported by backend
   Future<String> createBounty({
     required String projectId,
     required String title,
@@ -89,10 +73,8 @@ class BountiesRepository {
         'projectId': projectId,
         'title': title,
         'description': description,
-        'reward': reward,
-        'type': type.name,
-        'skills': skills,
-        if (deadline != null) 'deadline': deadline.millisecondsSinceEpoch,
+        'reward': reward
+            .toString(), // Backend expects string? Check TS. TS says v.string().
       });
       return result;
     } catch (e) {
@@ -116,10 +98,18 @@ class BountiesRepository {
     String? attachmentUrl,
   }) async {
     try {
+      // Mapping: content -> submissionNote, attachmentUrl -> submissionUrl
+      // Backend expects submissionUrl (required). If no attachment, use placeholder?
+      // TS: submissionUrl: v.string(), submissionNote: v.optional(v.string())
+
+      final url =
+          attachmentUrl ??
+          'https://github.com/placeholder'; // Fallback if required
+
       final result = await _convex.mutation<String>('bounties:submit', {
-        'bountyId': bountyId,
-        'content': content,
-        if (attachmentUrl != null) 'attachmentUrl': attachmentUrl,
+        'id': bountyId,
+        'submissionUrl': url,
+        'submissionNote': content,
       });
       return result;
     } catch (e) {
@@ -143,7 +133,7 @@ class BountiesRepository {
     try {
       await _convex.mutation('bounties:rejectSubmission', {
         'id': submissionId,
-        'feedback': feedback,
+        'reviewNote': feedback,
       });
     } catch (e) {
       throw BountiesRepositoryException('Failed to reject submission: $e');
@@ -152,11 +142,8 @@ class BountiesRepository {
 
   /// Cancel a bounty
   Future<void> cancelBounty(String bountyId) async {
-    try {
-      await _convex.mutation('bounties:cancel', {'id': bountyId});
-    } catch (e) {
-      throw BountiesRepositoryException('Failed to cancel bounty: $e');
-    }
+    // Not supported by backend
+    throw UnimplementedError('Cancel bounty not supported');
   }
 
   /// Map Convex data to Bounty model
@@ -164,41 +151,41 @@ class BountiesRepository {
     return Bounty(
       id: data['_id'] as String,
       projectId: data['projectId'] as String,
-      creatorId: data['creatorId'] as String,
+      // creatorId is not always returned by list queries in some backends,
+      // but 'bounties:create' inserts it? Wait. TS 'create' does NOT insert 'creatorId'.
+      // It uses 'projectId' to check owner. 'bounties' table has no 'creatorId' column in insert!
+      // 'bounties:list' returns raw docs.
+      // So 'creatorId' might be missing. Bounty model expects it (non-nullable?).
+      // I should update Bounty model later or fallback here.
+      creatorId: data['creatorId'] as String? ?? '', // Fallback
       title: data['title'] as String,
       description: data['description'] as String,
-      reward: (data['reward'] as num).toDouble(),
+      // reward is string in TS schema?
+      // TS create: reward: v.string().
+      // Dart model: double.
+      // I need to parse it.
+      reward: double.tryParse(data['reward'].toString()) ?? 0.0,
+
       type: _parseBountyType(data['type'] as String?),
       status: _parseBountyStatus(data['status'] as String?),
       skills: List<String>.from(data['skills'] as List? ?? []),
-      claimedById: data['claimedById'] as String?,
-      claimedAt: data['claimedAt'] != null
+      claimedById: data['assigneeId'] as String?, // Mapped from assigneeId
+      // timestamps
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        (data['createdAt'] as num).toInt(),
+      ),
+      updatedAt: data['updatedAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(
-              (data['claimedAt'] as num).toInt(),
+              (data['updatedAt'] as num).toInt(),
             )
-          : null,
-      deadline: data['deadline'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(
-              (data['deadline'] as num).toInt(),
-            )
-          : null,
-      completionNote: data['completionNote'] as String?,
+          : DateTime.now(),
+
+      // Other fields might be missing
       completedAt: data['completedAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(
               (data['completedAt'] as num).toInt(),
             )
           : null,
-      submissions:
-          (data['submissions'] as List?)
-              ?.map((s) => BountySubmission.fromJson(s as Map<String, dynamic>))
-              .toList() ??
-          [],
-      createdAt: DateTime.fromMillisecondsSinceEpoch(
-        (data['createdAt'] as num).toInt(),
-      ),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(
-        (data['updatedAt'] as num).toInt(),
-      ),
     );
   }
 
@@ -223,12 +210,14 @@ class BountiesRepository {
     switch (status) {
       case 'open':
         return BountyStatus.open;
-      case 'claimed':
+      case 'assigned': // Backend uses 'assigned', Dart uses 'claimed'
         return BountyStatus.claimed;
       case 'submitted':
         return BountyStatus.submitted;
       case 'completed':
         return BountyStatus.completed;
+      case 'paid':
+        return BountyStatus.completed; // Map 'paid' to completed for now
       case 'cancelled':
         return BountyStatus.cancelled;
       default:

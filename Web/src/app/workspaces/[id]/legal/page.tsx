@@ -8,6 +8,7 @@ import { Id } from '@convex/_generated/dataModel';
 import { FileText, Plus, Download } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { logError } from '@/lib/errorTracking';
 
 export default function LegalPage() {
   const params = useParams();
@@ -59,7 +60,7 @@ export default function LegalPage() {
       setEquity('');
       toast.success('Legal document drafted successfully');
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'LegalPage', action: 'draftDocument' });
       toast.error('Failed to draft document');
     }
   };

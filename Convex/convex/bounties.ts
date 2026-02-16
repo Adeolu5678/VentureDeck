@@ -66,16 +66,16 @@ export const getMyBounties = query({
       .withIndex('by_assignee', (q) => q.eq('assigneeId', user._id))
       .collect();
 
-    // Enrich with project info
-    return Promise.all(
-      bounties.map(async (bounty) => {
-        const project = await ctx.db.get(bounty.projectId);
-        return {
-          ...bounty,
-          projectTitle: project?.title || 'Unknown Project',
-        };
-      })
-    );
+    if (bounties.length === 0) return [];
+
+    const projectIds = [...new Set(bounties.map(b => b.projectId))];
+    const projects = await Promise.all(projectIds.map(id => ctx.db.get(id)));
+    const projectMap = new Map(projects.filter(Boolean).map(p => [p!._id, p!]));
+
+    return bounties.map(bounty => ({
+      ...bounty,
+      projectTitle: projectMap.get(bounty.projectId)?.title || 'Unknown Project',
+    }));
   },
 });
 

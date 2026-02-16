@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { toast } from 'sonner';
+import { logError } from '@/lib/errorTracking';
 
 interface MemberMenuProps {
   memberId: Id<'users'>;
@@ -57,7 +58,7 @@ export default function MemberMenu({
       router.push(`/conversations/${conversationId}`);
       setIsOpen(false);
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'MemberMenu', action: 'createDirectMessage' });
       toast.error('Failed to start conversation');
     }
   };
@@ -72,7 +73,7 @@ export default function MemberMenu({
       if (onKick) onKick();
     } catch (error) {
       toast.error('Failed to remove member');
-      console.error(error);
+      logError(error, { component: 'MemberMenu', action: 'kickMember' });
     }
     setIsOpen(false);
   };
@@ -87,7 +88,7 @@ export default function MemberMenu({
       setIsChangePositionOpen(false);
     } catch (error) {
       toast.error('Failed to update position');
-      console.error(error);
+      logError(error, { component: 'MemberMenu', action: 'updateRole' });
     }
   };
 

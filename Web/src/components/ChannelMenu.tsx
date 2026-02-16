@@ -13,6 +13,7 @@ import {
 import { MoreHorizontal, UserPlus, Settings, Check, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import NextImage from 'next/image';
+import { logError } from '@/lib/errorTracking';
 
 interface ChannelMenuProps {
   channelId: Id<'conversations'>;
@@ -101,7 +102,7 @@ function InviteMembersModal({ channelId, workspaceId, onClose }: { channelId: Id
       toast.success('Members invited');
       onClose();
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'ChannelMenu', action: 'inviteMembers' });
       toast.error('Failed to invite members');
     }
   };
@@ -188,7 +189,7 @@ function ChannelSettingsModal({ channelId, onClose }: { channelId: Id<'conversat
       toast.success('Channel updated');
       onClose();
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'ChannelMenu', action: 'updateChannel' });
       toast.error('Failed to update channel');
     }
   };
@@ -200,8 +201,8 @@ function ChannelSettingsModal({ channelId, onClose }: { channelId: Id<'conversat
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold text-white">Channel Settings</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
-            <Check className="w-5 h-5 rotate-45" /> {/* Close icon using Check rotated or just X if imported */}
+          <button onClick={onClose} aria-label="Close settings" className="text-slate-400 hover:text-white">
+            <Check className="w-5 h-5 rotate-45" />
           </button>
         </div>
 

@@ -94,6 +94,7 @@ export function UserSearch() {
           type="text"
           placeholder="Search by username..."
           onChange={handleSearch}
+          aria-label="Search users by username"
           className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
         />
         {isSearching && (

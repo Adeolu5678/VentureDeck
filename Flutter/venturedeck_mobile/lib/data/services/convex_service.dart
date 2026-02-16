@@ -271,22 +271,4 @@ class ConvexService {
   }
 }
 
-/// Extension to easily access ConvexService
-extension ConvexServiceExtension on ConvexService {
-  /// Shorthand for common queries
-  Future<List<Map<String, dynamic>>> listProjects() async {
-    return query<List<Map<String, dynamic>>>('projects:list');
-  }
-
-  Future<Map<String, dynamic>?> getProject(String projectId) async {
-    return query<Map<String, dynamic>?>('projects:get', {'id': projectId});
-  }
-
-  Future<List<Map<String, dynamic>>> listInvestors() async {
-    return query<List<Map<String, dynamic>>>('users:listInvestors');
-  }
-
-  Future<Map<String, dynamic>?> getCurrentUser() async {
-    return query<Map<String, dynamic>?>('users:getCurrentUser');
-  }
-}
+// Extension removed. Repositories should call query/mutation directly.

@@ -4,7 +4,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { Plus, Search, TrendingUp, Users, ArrowRight, Sparkles, LayoutDashboard, Heart } from 'lucide-react';
 import Image from 'next/image';
@@ -13,7 +13,7 @@ import { ActivityFeed } from '@/components/ActivityFeed';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PremiumCard } from '@/components/ui/PremiumCard';
 import { PremiumButton } from '@/components/ui/PremiumButton';
-import { useRef } from 'react';
+import { logError } from '@/lib/errorTracking';
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
@@ -59,7 +59,7 @@ export default function DashboardPage() {
                 });
                 window.location.reload(); 
               } catch (err) {
-                console.error("Manual sync failed", err);
+                logError(err, { component: 'DashboardPage', action: 'manualSync' });
               }
             }}
             className="text-sm text-primary hover:underline"
@@ -106,7 +106,7 @@ function RoleSelection() {
     try {
       await setRole({ role });
     } catch (error) {
-      console.error("Failed to set role:", error);
+      logError(error, { component: 'DashboardPage', action: 'setRole' });
       setIsSubmitting(false);
     }
   };

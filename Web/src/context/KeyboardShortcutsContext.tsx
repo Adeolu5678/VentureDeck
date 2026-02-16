@@ -147,7 +147,6 @@ export function KeyboardShortcutsProvider({ children }: KeyboardShortcutsProvide
                       {shortcut.ctrl && (
                         <>
                           <kbd className="px-2 py-1 text-xs font-mono bg-white/10 rounded border border-white/20">
-                            {/* @ts-expect-error Lucide icon type mismatch */}
                             <Command className="w-3 h-3 inline-block" />
                           </kbd>
                           <span className="text-muted-foreground">+</span>
@@ -174,7 +173,6 @@ export function KeyboardShortcutsProvider({ children }: KeyboardShortcutsProvide
 
         <div className="mt-6 pt-4 border-t border-white/10">
           <p className="text-xs text-muted-foreground flex items-center gap-2">
-            {/* @ts-expect-error Lucide icon type mismatch */}
             <Keyboard className="w-4 h-4" />
             Press <kbd className="px-1.5 py-0.5 text-xs bg-white/10 rounded mx-1">/</kbd> anywhere to show this help
           </p>

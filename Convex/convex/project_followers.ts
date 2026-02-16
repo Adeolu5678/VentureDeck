@@ -150,23 +150,26 @@ export const getFollowedProjects = query({
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .collect();
 
-    // Enrich with project details
-    const projects = await Promise.all(
-      follows.map(async (follow) => {
-        const project = await ctx.db.get(follow.projectId);
-        if (!project) return null;
+    if (follows.length === 0) return [];
 
-        const owner = await ctx.db.get(project.ownerId);
-        
-        return {
-          ...project,
-          followedAt: follow.createdAt,
-          ownerName: owner?.displayName || owner?.username || 'Unknown',
-        };
-      })
-    );
+    const projectIds = [...new Set(follows.map(f => f.projectId))];
+    const projects = await Promise.all(projectIds.map(id => ctx.db.get(id)));
+    const projectMap = new Map(projects.filter(Boolean).map(p => [p!._id, p!]));
 
-    return projects.filter((p): p is NonNullable<typeof p> => p !== null);
+    const ownerIds = [...new Set(projects.filter(Boolean).map(p => p!.ownerId))];
+    const owners = await Promise.all(ownerIds.map(id => ctx.db.get(id)));
+    const ownerMap = new Map(owners.filter(Boolean).map(o => [o!._id, o!]));
+
+    return follows.map(follow => {
+      const project = projectMap.get(follow.projectId);
+      if (!project) return null;
+      const owner = ownerMap.get(project.ownerId);
+      return {
+        ...project,
+        followedAt: follow.createdAt,
+        ownerName: owner?.displayName || owner?.username || 'Unknown',
+      };
+    }).filter((p): p is NonNullable<typeof p> => p !== null);
   },
 });
 
@@ -194,23 +197,23 @@ export const getFollowers = query({
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
 
-    // Enrich with user details
-    const followers = await Promise.all(
-      follows.map(async (follow) => {
-        const follower = await ctx.db.get(follow.userId);
-        if (!follower) return null;
+    if (follows.length === 0) return [];
 
-        return {
-          _id: follower._id,
-          username: follower.username,
-          displayName: follower.displayName,
-          avatarUrl: follower.avatarUrl,
-          role: follower.role,
-          followedAt: follow.createdAt,
-        };
-      })
-    );
+    const userIds = [...new Set(follows.map(f => f.userId))];
+    const users = await Promise.all(userIds.map(id => ctx.db.get(id)));
+    const userMap = new Map(users.filter(Boolean).map(u => [u!._id, u!]));
 
-    return followers.filter((f): f is NonNullable<typeof f> => f !== null);
+    return follows.map(follow => {
+      const follower = userMap.get(follow.userId);
+      if (!follower) return null;
+      return {
+        _id: follower._id,
+        username: follower.username,
+        displayName: follower.displayName,
+        avatarUrl: follower.avatarUrl,
+        role: follower.role,
+        followedAt: follow.createdAt,
+      };
+    }).filter((f): f is NonNullable<typeof f> => f !== null);
   },
 });

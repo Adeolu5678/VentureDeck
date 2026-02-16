@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { 
@@ -163,7 +164,7 @@ export function ActivityFeed({ variant = 'entrepreneur' }: { variant?: 'entrepre
   );
 }
 
-function ActivityContent({ 
+const ActivityContent = memo(function ActivityContent({ 
   activity, 
   IconComponent, 
   colorClass 
@@ -190,6 +191,6 @@ function ActivityContent({
       </div>
     </>
   );
-}
+});
 
 export default ActivityFeed;

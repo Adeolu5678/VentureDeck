@@ -1,41 +1,99 @@
 /// VentureDeck Mobile - Dashboard Screen
 ///
-/// Main dashboard with role-based content.
+/// Analytics and overview dashboard for entrepreneurs and investors.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:venturedeck_mobile/core/constants/app_constants.dart';
 import 'package:venturedeck_mobile/core/theme/app_theme.dart';
 import 'package:venturedeck_mobile/data/models/user.dart';
+import 'package:venturedeck_mobile/domain/providers/analytics_provider.dart';
 import 'package:venturedeck_mobile/domain/providers/auth_provider.dart';
+import 'package:venturedeck_mobile/domain/providers/projects_provider.dart';
+import 'package:venturedeck_mobile/presentation/widgets/premium_button.dart';
 import 'package:venturedeck_mobile/presentation/widgets/premium_card.dart';
+import 'package:venturedeck_mobile/presentation/widgets/project_card.dart';
 
 /// Main dashboard screen
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final userAsync = ref.watch(currentUserProvider);
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider).value;
+    final isInvestor = user?.role == UserRole.investor;
 
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
         child: SafeArea(
-          child: userAsync.when(
-            data: (user) {
-              if (user == null) {
-                return const Center(child: Text('User not found'));
-              }
-              return user.isEntrepreneur
-                  ? _EntrepreneurDashboard(user: user)
-                  : _InvestorDashboard(user: user);
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Center(child: Text('Error: $error')),
+          child: CustomScrollView(
+            slivers: [
+              // Header
+              SliverPadding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Dashboard',
+                                style: AppTypography.headlineMedium.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                isInvestor
+                                    ? 'Portfolio Overview'
+                                    : 'Project Analytics',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(AppSpacing.sm),
+                            decoration: BoxDecoration(
+                              color: AppColors.backgroundCard,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: const Icon(
+                              Icons.notifications_outlined,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ).animate().fadeIn().slideX(begin: -0.1, end: 0),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Content based on role
+              if (isInvestor)
+                const _InvestorDashboard()
+              else
+                const _EntrepreneurDashboard(),
+
+              // Bottom padding
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
           ),
         ),
       ),
@@ -43,439 +101,341 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-/// Dashboard for entrepreneurs
-class _EntrepreneurDashboard extends StatelessWidget {
-  const _EntrepreneurDashboard({required this.user});
-
-  final User user;
+/// Dashboard for Entrepreneurs
+class _EntrepreneurDashboard extends ConsumerWidget {
+  const _EntrepreneurDashboard();
 
   @override
-  Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        // Header
-        SliverToBoxAdapter(child: _DashboardHeader(user: user)),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final myProjectsAsync = ref.watch(myProjectsProvider);
 
-        // Quick Stats
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Quick Stats',
-                  style: AppTypography.titleMedium,
-                ).animate().fadeIn().slideX(begin: -0.1, end: 0),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: const _StatCard(
-                        icon: Icons.rocket_launch,
-                        label: 'Projects',
-                        value: '0',
-                        color: AppColors.primary,
-                      ).animate(delay: 100.ms).fadeIn().scale(),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: const _StatCard(
-                        icon: Icons.people,
-                        label: 'Team',
-                        value: '0',
-                        color: AppColors.accent,
-                      ).animate(delay: 150.ms).fadeIn().scale(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: const _StatCard(
-                        icon: Icons.trending_up,
-                        label: 'Traction',
-                        value: '0',
-                        color: AppColors.success,
-                      ).animate(delay: 200.ms).fadeIn().scale(),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: const _StatCard(
-                        icon: Icons.attach_money,
-                        label: 'Interest',
-                        value: '\$0',
-                        color: AppColors.info,
-                      ).animate(delay: 250.ms).fadeIn().scale(),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // Quick actions
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Quick Actions', style: AppTypography.titleMedium),
-                const SizedBox(height: AppSpacing.md),
-                PremiumCard(
-                  child: Column(
-                    children: [
-                      _ActionTile(
-                        icon: Icons.add_circle_outline,
-                        title: 'Create New Project',
-                        subtitle: 'Start building your pitch',
-                        onTap: () => context.push('/projects/new'),
-                      ),
-                      const Divider(color: AppColors.border),
-                      _ActionTile(
-                        icon: Icons.flag_outlined,
-                        title: 'Add Milestone',
-                        subtitle: 'Track your progress',
-                        onTap: () {},
-                      ),
-                      const Divider(color: AppColors.border),
-                      _ActionTile(
-                        icon: Icons.people_outline,
-                        title: 'Invite Team Member',
-                        subtitle: 'Grow your team',
-                        onTap: () {},
-                      ),
-                    ],
+    return myProjectsAsync.when(
+      data: (projects) {
+        if (projects.isEmpty) {
+          return SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.rocket_launch_outlined,
+                    size: 64,
+                    color: AppColors.textMuted,
                   ),
-                ).animate(delay: 300.ms).fadeIn().slideY(begin: 0.1, end: 0),
-              ],
+                  const SizedBox(height: AppSpacing.lg),
+                  Text('No Projects Yet', style: AppTypography.titleLarge),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Create your first project to see analytics',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  PremiumButton(
+                    label: 'Create Project',
+                    icon: Icons.add,
+                    variant: PremiumButtonVariant.gradient,
+                    onPressed: () => context.push('/projects/create'),
+                  ),
+                ],
+              ).animate().fadeIn().scale(),
             ),
-          ),
-        ),
+          );
+        }
 
-        // Recent Activity placeholder
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Recent Activity', style: AppTypography.titleMedium),
-                const SizedBox(height: AppSpacing.md),
-                PremiumCard(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.xl),
+        final project = projects.first; // MVP: Check first project
+        return SliverList(
+          delegate: SliverChildListDelegate([
+            // Project Selector (if multiple?) - MVP just confirms active project
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: PremiumCard(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: AppRadius.radiusMd,
+                      ),
+                      child: const Icon(
+                        Icons.rocket_launch,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.history,
-                            size: 48,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(height: AppSpacing.md),
                           Text(
-                            'No recent activity',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textMuted,
+                            project.title,
+                            style: AppTypography.titleSmall.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.sm),
                           Text(
-                            'Create a project to get started',
-                            style: AppTypography.bodySmall,
+                            project.statusDisplayName,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: project.isPublished
+                                  ? AppColors.success
+                                  : AppColors.textMuted,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ).animate(delay: 400.ms).fadeIn().slideY(begin: 0.1, end: 0),
-              ],
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () =>
+                          context.push('/projects/${project.id}/edit'),
+                    ),
+                  ],
+                ),
+              ).animate(delay: 50.ms).fadeIn().slideY(begin: 0.1, end: 0),
             ),
-          ),
-        ),
+            const SizedBox(height: AppSpacing.lg),
 
-        // Bottom padding
-        const SliverToBoxAdapter(child: SizedBox(height: 100)),
-      ],
+            // Analytics Grid
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: _ProjectAnalyticsGrid(projectId: project.id),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // Recent Activity / Call to Action
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: Text('Suggestions', style: AppTypography.titleMedium),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: PremiumCard(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(
+                        Icons.check_circle_outline,
+                        color: AppColors.primary,
+                      ),
+                      title: const Text('Update Traction Score'),
+                      subtitle: const Text(
+                        'Keep investors updated with weekly progress',
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {},
+                    ),
+                    const Divider(color: AppColors.border),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.description_outlined,
+                        color: AppColors.accent,
+                      ),
+                      title: const Text('Upload Documents'),
+                      subtitle: const Text('Add pitch deck and legal docs'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {},
+                    ),
+                  ],
+                ),
+              ).animate(delay: 200.ms).fadeIn(),
+            ),
+          ]),
+        );
+      },
+      loading: () => const SliverFillRemaining(
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (err, stack) =>
+          SliverFillRemaining(child: Center(child: Text('Error: $err'))),
     );
   }
 }
 
-/// Dashboard for investors
-class _InvestorDashboard extends StatelessWidget {
-  const _InvestorDashboard({required this.user});
+/// Analytics Grid for a project
+class _ProjectAnalyticsGrid extends ConsumerWidget {
+  const _ProjectAnalyticsGrid({required this.projectId});
 
-  final User user;
+  final String projectId;
 
   @override
-  Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        // Header
-        SliverToBoxAdapter(child: _DashboardHeader(user: user)),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final analyticsAsync = ref.watch(projectAnalyticsProvider(projectId));
 
-        // Quick Stats
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Portfolio Overview',
-                  style: AppTypography.titleMedium,
-                ).animate().fadeIn().slideX(begin: -0.1, end: 0),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: const _StatCard(
-                        icon: Icons.star,
-                        label: 'Following',
-                        value: '0',
-                        color: AppColors.primary,
-                      ).animate(delay: 100.ms).fadeIn().scale(),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: const _StatCard(
-                        icon: Icons.handshake,
-                        label: 'Committed',
-                        value: '\$0',
-                        color: AppColors.success,
-                      ).animate(delay: 150.ms).fadeIn().scale(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: const _StatCard(
-                        icon: Icons.auto_awesome,
-                        label: 'Matches',
-                        value: '0',
-                        color: AppColors.accent,
-                      ).animate(delay: 200.ms).fadeIn().scale(),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: const _StatCard(
-                        icon: Icons.analytics,
-                        label: 'Avg Score',
-                        value: '-',
-                        color: AppColors.info,
-                      ).animate(delay: 250.ms).fadeIn().scale(),
-                    ),
-                  ],
-                ),
-              ],
+    return analyticsAsync.when(
+      data: (analytics) {
+        final realtime = analytics.realtime;
+        return GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AppSpacing.md,
+          crossAxisSpacing: AppSpacing.md,
+          childAspectRatio: 1.5,
+          children: [
+            _StatCard(
+              icon: Icons.visibility,
+              label: 'Total Views',
+              value:
+                  '${realtime.todayViews}', // Using todayViews as placeholder or total depending on API
+              subValue: '${realtime.todayUniqueViews} unique',
+              color: AppColors.primary,
+              delay: 0,
             ),
+            _StatCard(
+              icon: Icons.people,
+              label: 'Followers',
+              value: '${realtime.totalFollowers}',
+              color: AppColors.accent,
+              delay: 50,
+            ),
+            _StatCard(
+              icon: Icons.handshake,
+              label: 'Soft Circle',
+              value: '\$${_formatCurrency(realtime.totalSoftCircle)}',
+              subValue: '${realtime.softCircleCount} commitments',
+              color: AppColors.accent,
+              delay: 100,
+            ),
+            _StatCard(
+              icon: Icons.trending_up,
+              label: 'Traction',
+              value: '${realtime.tractionScore}',
+              color: AppColors.success,
+              delay: 150,
+            ),
+          ],
+        );
+      },
+      loading: () => const SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (err, _) => const Center(child: Text('Failed to load stats')),
+    );
+  }
+
+  String _formatCurrency(int value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(0)}K';
+    }
+    return '$value';
+  }
+}
+
+/// Dashboard for Investors
+class _InvestorDashboard extends ConsumerWidget {
+  const _InvestorDashboard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final followedProjectsAsync = ref.watch(followedProjectsProvider);
+
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        // Stats
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: AppSpacing.md,
+            crossAxisSpacing: AppSpacing.md,
+            childAspectRatio: 1.5,
+            children: [
+              _StatCard(
+                icon: Icons.star,
+                label: 'Following',
+                value: followedProjectsAsync.maybeWhen(
+                  data: (projects) => '${projects.length}',
+                  orElse: () => '-',
+                ),
+                color: AppColors.primary,
+                delay: 0,
+              ),
+              const _StatCard(
+                icon: Icons.pie_chart,
+                label: 'Invested',
+                value: '-',
+                subValue: 'Coming soon',
+                color: AppColors.accent,
+                delay: 50,
+              ),
+            ],
           ),
         ),
 
-        // Quick actions
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Quick Actions', style: AppTypography.titleMedium),
-                const SizedBox(height: AppSpacing.md),
-                PremiumCard(
-                  child: Column(
-                    children: [
-                      _ActionTile(
-                        icon: Icons.explore_outlined,
-                        title: 'Discover Projects',
-                        subtitle: 'Browse curated deals',
-                        onTap: () => context.go(RoutePaths.search),
-                      ),
-                      const Divider(color: AppColors.border),
-                      _ActionTile(
-                        icon: Icons.auto_awesome,
-                        title: 'AI Matchmaking',
-                        subtitle: 'Find perfect matches',
-                        onTap: () {},
-                      ),
-                      const Divider(color: AppColors.border),
-                      _ActionTile(
-                        icon: Icons.bookmark_outline,
-                        title: 'Saved Searches',
-                        subtitle: 'View your saved filters',
-                        onTap: () {},
-                      ),
-                    ],
+        const SizedBox(height: AppSpacing.xl),
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: Text('Following', style: AppTypography.titleMedium),
+        ),
+        const SizedBox(height: AppSpacing.md),
+
+        // Followed Projects List
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: followedProjectsAsync.when(
+            data: (projects) {
+              if (projects.isEmpty) {
+                return const PremiumCard(
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(AppSpacing.lg),
+                      child: Text('Not following any projects yet'),
+                    ),
                   ),
-                ).animate(delay: 300.ms).fadeIn().slideY(begin: 0.1, end: 0),
-              ],
-            ),
-          ),
-        ),
-
-        // Top Matches placeholder
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Top Matches', style: AppTypography.titleMedium),
-                    TextButton(
-                      onPressed: () => context.go(RoutePaths.search),
-                      child: Text(
-                        'View All',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.primary,
+                );
+              }
+              return Column(
+                children: projects
+                    .map(
+                      (project) => Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                        child: ProjectCard(
+                          project: project,
+                          onTap: () => context.push('/projects/${project.id}'),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                PremiumCard(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.xl),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.auto_awesome,
-                            size: 48,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          Text(
-                            'No matches yet',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            'Complete your thesis to get personalized matches',
-                            style: AppTypography.bodySmall,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ).animate(delay: 400.ms).fadeIn().slideY(begin: 0.1, end: 0),
-              ],
-            ),
-          ),
-        ),
-
-        // Bottom padding
-        const SliverToBoxAdapter(child: SizedBox(height: 100)),
-      ],
-    );
-  }
-}
-
-/// Dashboard header with greeting
-class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader({required this.user});
-
-  final User user;
-
-  @override
-  Widget build(BuildContext context) {
-    final greeting = _getGreeting();
-
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  greeting,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textTertiary,
-                  ),
-                ).animate().fadeIn(),
-                const SizedBox(height: 4),
-                Text(
-                  user.fullName,
-                  style: AppTypography.headlineMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ).animate(delay: 50.ms).fadeIn().slideX(begin: -0.1, end: 0),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () => context.go(RoutePaths.profile),
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                shape: BoxShape.circle,
-                boxShadow: AppShadows.glow,
-              ),
-              child: user.avatarUrl != null
-                  ? ClipOval(
-                      child: Image.network(
-                        user.avatarUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            _buildAvatarFallback(),
-                      ),
                     )
-                  : _buildAvatarFallback(),
-            ),
-          ).animate(delay: 100.ms).fadeIn().scale(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAvatarFallback() {
-    return Center(
-      child: Text(
-        user.initials,
-        style: AppTypography.titleMedium.copyWith(
-          color: AppColors.backgroundDark,
-          fontWeight: FontWeight.bold,
+                    .toList()
+                    .animate(interval: 50.ms)
+                    .fadeIn()
+                    .slideX(),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, _) => Text('Error: $err'),
+          ),
         ),
-      ),
+      ]),
     );
-  }
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
   }
 }
 
-/// Stat card widget
 class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.icon,
     required this.label,
     required this.value,
+    this.subValue,
     required this.color,
+    this.delay = 0,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final String? subValue;
   final Color color;
+  final int delay;
 
   @override
   Widget build(BuildContext context) {
@@ -483,80 +443,42 @@ class _StatCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: AppRadius.radiusSm,
+              Text(
+                label,
+                style: AppTypography.labelMedium.copyWith(
+                  color: AppColors.textMuted,
                 ),
-                child: Icon(icon, size: 16, color: color),
               ),
-              const Spacer(),
+              Icon(icon, size: 16, color: color),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            value,
-            style: AppTypography.headlineSmall.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: AppTypography.headlineSmall.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (subValue != null)
+                Text(
+                  subValue!,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: AppColors.textMuted,
+                    fontSize: 10,
+                  ),
+                ),
+            ],
           ),
-          Text(label, style: AppTypography.bodySmall),
         ],
       ),
-    );
-  }
-}
-
-/// Action tile widget
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: AppRadius.radiusSm,
-              ),
-              child: Icon(icon, color: AppColors.primary, size: 20),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: AppTypography.titleSmall),
-                  Text(subtitle, style: AppTypography.bodySmall),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: AppColors.textMuted),
-          ],
-        ),
-      ),
-    );
+    ).animate(delay: Duration(milliseconds: delay)).fadeIn().scale();
   }
 }

@@ -62,122 +62,150 @@ export const getMyActivities = query({
       color: string;
     }> = [];
 
-    // Get my projects
     const myProjects = await ctx.db
       .query('projects')
       .withIndex('by_owner', (q) => q.eq('ownerId', user._id))
       .collect();
 
     const projectIds = myProjects.map(p => p._id);
+    const projectMap = new Map(myProjects.map(p => [p._id, p]));
 
-    // 1. Recent applications to my projects
-    for (const projectId of projectIds) {
-      const applications = await ctx.db
-        .query('applications')
-        .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    if (projectIds.length === 0) {
+      const vouches = await ctx.db
+        .query('vouches')
+        .filter((q) => q.eq(q.field('targetId'), user._id))
         .order('desc')
         .take(5);
       
-      for (const app of applications) {
-        const applicant = await ctx.db.get(app.applicantId);
-        const project = myProjects.find(p => p._id === projectId);
+      const voucherIds = [...new Set(vouches.map(v => v.voucherId))];
+      const vouchers = await Promise.all(voucherIds.map(id => ctx.db.get(id)));
+      const voucherMap = new Map(vouchers.filter(Boolean).map(v => [v!._id, v!]));
+
+      for (const vouch of vouches) {
+        const voucher = voucherMap.get(vouch.voucherId);
         activities.push({
-          id: `app-${app._id}`,
-          type: 'application',
-          title: `${app.status === 'accepted' ? 'Accepted' : app.status === 'rejected' ? 'Rejected' : 'New'} application`,
-          description: `${applicant?.displayName || applicant?.username || 'Someone'} applied to ${project?.title || 'your project'}`,
-          timestamp: app.createdAt,
-          projectId,
-          projectTitle: project?.title,
-          icon: app.status === 'accepted' ? 'UserCheck' : app.status === 'rejected' ? 'UserX' : 'UserPlus',
-          color: app.status === 'accepted' ? 'emerald' : app.status === 'rejected' ? 'red' : 'blue',
+          id: `vouch-${vouch._id}`,
+          type: 'vouch',
+          title: 'New vouch received!',
+          description: `${voucher?.displayName || voucher?.username || 'Someone'} vouched for you`,
+          timestamp: vouch.createdAt,
+          icon: 'Award',
+          color: 'purple',
         });
       }
+
+      activities.sort((a, b) => b.timestamp - a.timestamp);
+      return activities.slice(0, limit);
     }
 
-    // 2. Recent milestones completed on my projects
-    for (const projectId of projectIds) {
-      const milestones = await ctx.db
-        .query('milestones')
-        .withIndex('by_project', (q) => q.eq('projectId', projectId))
-        .order('desc')
-        .take(5);
-      
-      for (const milestone of milestones.filter(m => m.status !== 'pending')) {
-        const project = myProjects.find(p => p._id === projectId);
-        activities.push({
-          id: `milestone-${milestone._id}`,
-          type: 'milestone',
-          title: milestone.status === 'verified' ? 'Milestone verified!' : 'Milestone completed',
-          description: `"${milestone.title}" on ${project?.title}`,
-          timestamp: milestone.createdAt,
-          projectId,
-          projectTitle: project?.title,
-          icon: milestone.status === 'verified' ? 'ShieldCheck' : 'CheckCircle',
-          color: milestone.status === 'verified' ? 'emerald' : 'primary',
-        });
-      }
+    const [allApplications, allMilestones, allCircles, allFollowers, allBounties] = await Promise.all([
+      Promise.all(projectIds.map(projectId => 
+        ctx.db.query('applications').withIndex('by_project', (q) => q.eq('projectId', projectId)).order('desc').take(5)
+      )),
+      Promise.all(projectIds.map(projectId => 
+        ctx.db.query('milestones').withIndex('by_project', (q) => q.eq('projectId', projectId)).order('desc').take(5)
+      )),
+      Promise.all(projectIds.map(projectId => 
+        ctx.db.query('soft_circles').withIndex('by_project', (q) => q.eq('projectId', projectId)).order('desc').take(5)
+      )),
+      Promise.all(projectIds.map(projectId => 
+        ctx.db.query('project_followers').withIndex('by_project', (q) => q.eq('projectId', projectId)).order('desc').take(5)
+      )),
+      Promise.all(projectIds.map(projectId => 
+        ctx.db.query('bounties').withIndex('by_project', (q) => q.eq('projectId', projectId)).order('desc').take(5)
+      )),
+    ]);
+
+    const applications = allApplications.flat();
+    const milestones = allMilestones.flat();
+    const circles = allCircles.flat();
+    const followers = allFollowers.flat();
+    const bounties = allBounties.flat();
+
+    const applicantIds = [...new Set(applications.map(a => a.applicantId))];
+    const investorIds = [...new Set(circles.map(c => c.investorId))];
+    const followerUserIds = [...new Set(followers.map(f => f.userId))];
+    const assigneeIds = [...new Set(bounties.filter(b => b.assigneeId).map(b => b.assigneeId!))];
+
+    const allUserIds = [...new Set([...applicantIds, ...investorIds, ...followerUserIds, ...assigneeIds])];
+    const users = await Promise.all(allUserIds.map(id => ctx.db.get(id)));
+    const userMap = new Map(users.filter(Boolean).map(u => [u!._id, u!]));
+
+    for (const app of applications) {
+      const applicant = userMap.get(app.applicantId);
+      const project = projectMap.get(app.projectId);
+      activities.push({
+        id: `app-${app._id}`,
+        type: 'application',
+        title: `${app.status === 'accepted' ? 'Accepted' : app.status === 'rejected' ? 'Rejected' : 'New'} application`,
+        description: `${applicant?.displayName || applicant?.username || 'Someone'} applied to ${project?.title || 'your project'}`,
+        timestamp: app.createdAt,
+        projectId: app.projectId,
+        projectTitle: project?.title,
+        icon: app.status === 'accepted' ? 'UserCheck' : app.status === 'rejected' ? 'UserX' : 'UserPlus',
+        color: app.status === 'accepted' ? 'emerald' : app.status === 'rejected' ? 'red' : 'blue',
+      });
     }
 
-    // 3. Recent soft circles on my projects
-    for (const projectId of projectIds) {
-      const circles = await ctx.db
-        .query('soft_circles')
-        .withIndex('by_project', (q) => q.eq('projectId', projectId))
-        .order('desc')
-        .take(5);
-      
-      for (const circle of circles) {
-        const investor = await ctx.db.get(circle.investorId);
-        const project = myProjects.find(p => p._id === projectId);
-        activities.push({
-          id: `circle-${circle._id}`,
-          type: 'soft_circle',
-          title: 'New investor interest',
-          description: `${investor?.displayName || investor?.username || 'An investor'} soft-circled $${circle.amount.toLocaleString()} on ${project?.title}`,
-          timestamp: circle.createdAt,
-          projectId,
-          projectTitle: project?.title,
-          icon: 'DollarSign',
-          color: 'amber',
-        });
-      }
+    for (const milestone of milestones.filter(m => m.status !== 'pending')) {
+      const project = projectMap.get(milestone.projectId);
+      activities.push({
+        id: `milestone-${milestone._id}`,
+        type: 'milestone',
+        title: milestone.status === 'verified' ? 'Milestone verified!' : 'Milestone completed',
+        description: `"${milestone.title}" on ${project?.title}`,
+        timestamp: milestone.createdAt,
+        projectId: milestone.projectId,
+        projectTitle: project?.title,
+        icon: milestone.status === 'verified' ? 'ShieldCheck' : 'CheckCircle',
+        color: milestone.status === 'verified' ? 'emerald' : 'primary',
+      });
     }
 
-    // 4. Recent followers on my projects
-    for (const projectId of projectIds) {
-      const followers = await ctx.db
-        .query('project_followers')
-        .withIndex('by_project', (q) => q.eq('projectId', projectId))
-        .order('desc')
-        .take(5);
-      
-      for (const follow of followers) {
-        const follower = await ctx.db.get(follow.userId);
-        const project = myProjects.find(p => p._id === projectId);
-        activities.push({
-          id: `follow-${follow._id}`,
-          type: 'follower',
-          title: 'New follower',
-          description: `${follower?.displayName || follower?.username || 'Someone'} is now following ${project?.title}`,
-          timestamp: follow.createdAt,
-          projectId,
-          projectTitle: project?.title,
-          icon: 'Heart',
-          color: 'pink',
-        });
-      }
+    for (const circle of circles) {
+      const investor = userMap.get(circle.investorId);
+      const project = projectMap.get(circle.projectId);
+      activities.push({
+        id: `circle-${circle._id}`,
+        type: 'soft_circle',
+        title: 'New investor interest',
+        description: `${investor?.displayName || investor?.username || 'An investor'} soft-circled $${circle.amount.toLocaleString()} on ${project?.title}`,
+        timestamp: circle.createdAt,
+        projectId: circle.projectId,
+        projectTitle: project?.title,
+        icon: 'DollarSign',
+        color: 'amber',
+      });
     }
 
-    // 5. Recent vouches received
+    for (const follow of followers) {
+      const followerUser = userMap.get(follow.userId);
+      const project = projectMap.get(follow.projectId);
+      activities.push({
+        id: `follow-${follow._id}`,
+        type: 'follower',
+        title: 'New follower',
+        description: `${followerUser?.displayName || followerUser?.username || 'Someone'} is now following ${project?.title}`,
+        timestamp: follow.createdAt,
+        projectId: follow.projectId,
+        projectTitle: project?.title,
+        icon: 'Heart',
+        color: 'pink',
+      });
+    }
+
     const vouches = await ctx.db
       .query('vouches')
       .filter((q) => q.eq(q.field('targetId'), user._id))
       .order('desc')
       .take(5);
     
+    const voucherIds = [...new Set(vouches.map(v => v.voucherId))];
+    const vouchers = await Promise.all(voucherIds.map(id => ctx.db.get(id)));
+    const voucherMap = new Map(vouchers.filter(Boolean).map(v => [v!._id, v!]));
+
     for (const vouch of vouches) {
-      const voucher = await ctx.db.get(vouch.voucherId);
+      const voucher = voucherMap.get(vouch.voucherId);
       activities.push({
         id: `vouch-${vouch._id}`,
         type: 'vouch',
@@ -189,32 +217,22 @@ export const getMyActivities = query({
       });
     }
 
-    // 6. Recent bounty completions on my projects
-    for (const projectId of projectIds) {
-      const bounties = await ctx.db
-        .query('bounties')
-        .withIndex('by_project', (q) => q.eq('projectId', projectId))
-        .order('desc')
-        .take(5);
-      
-      for (const bounty of bounties.filter(b => b.status === 'completed' || b.status === 'paid')) {
-        const assignee = bounty.assigneeId ? await ctx.db.get(bounty.assigneeId) : null;
-        const project = myProjects.find(p => p._id === projectId);
-        activities.push({
-          id: `bounty-${bounty._id}`,
-          type: 'bounty',
-          title: bounty.status === 'paid' ? 'Bounty paid' : 'Bounty completed',
-          description: `"${bounty.title}" completed by ${assignee?.displayName || assignee?.username || 'someone'}`,
-          timestamp: bounty.createdAt,
-          projectId,
-          projectTitle: project?.title,
-          icon: bounty.status === 'paid' ? 'Banknote' : 'Target',
-          color: bounty.status === 'paid' ? 'green' : 'blue',
-        });
-      }
+    for (const bounty of bounties.filter(b => b.status === 'completed' || b.status === 'paid')) {
+      const assignee = bounty.assigneeId ? userMap.get(bounty.assigneeId) : null;
+      const project = projectMap.get(bounty.projectId);
+      activities.push({
+        id: `bounty-${bounty._id}`,
+        type: 'bounty',
+        title: bounty.status === 'paid' ? 'Bounty paid' : 'Bounty completed',
+        description: `"${bounty.title}" completed by ${assignee?.displayName || assignee?.username || 'someone'}`,
+        timestamp: bounty.createdAt,
+        projectId: bounty.projectId,
+        projectTitle: project?.title,
+        icon: bounty.status === 'paid' ? 'Banknote' : 'Target',
+        color: bounty.status === 'paid' ? 'green' : 'blue',
+      });
     }
 
-    // Sort by timestamp and limit
     activities.sort((a, b) => b.timestamp - a.timestamp);
     return activities.slice(0, limit);
   },
@@ -247,31 +265,33 @@ export const getDiscoverActivity = query({
       color: string;
     }> = [];
 
-    // Get projects the user is following
     const following = await ctx.db
       .query('project_followers')
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .collect();
     
-    const followedProjectIds = following.map(f => f.projectId);
+    const followedProjectIds = following.map(f => f.projectId).slice(0, 10);
 
-    // Get milestones from followed projects
-    for (const projectId of followedProjectIds.slice(0, 10)) {
-      const milestones = await ctx.db
-        .query('milestones')
-        .withIndex('by_project', (q) => q.eq('projectId', projectId))
-        .order('desc')
-        .take(3);
-      
-      const project = await ctx.db.get(projectId);
+    if (followedProjectIds.length > 0) {
+      const [allMilestones, followedProjects] = await Promise.all([
+        Promise.all(followedProjectIds.map(projectId => 
+          ctx.db.query('milestones').withIndex('by_project', (q) => q.eq('projectId', projectId)).order('desc').take(3)
+        )),
+        Promise.all(followedProjectIds.map(id => ctx.db.get(id))),
+      ]);
+
+      const milestones = allMilestones.flat();
+      const projectMap = new Map(followedProjects.filter(Boolean).map(p => [p!._id, p!]));
+
       for (const milestone of milestones.filter(m => m.status !== 'pending')) {
+        const project = projectMap.get(milestone.projectId);
         activities.push({
           id: `milestone-${milestone._id}`,
           type: 'milestone',
           title: milestone.status === 'verified' ? 'Milestone verified!' : 'Milestone completed',
           description: `${project?.title} completed "${milestone.title}"`,
           timestamp: milestone.createdAt,
-          projectId,
+          projectId: milestone.projectId,
           projectTitle: project?.title,
           icon: milestone.status === 'verified' ? 'ShieldCheck' : 'CheckCircle',
           color: milestone.status === 'verified' ? 'emerald' : 'primary',
@@ -279,29 +299,33 @@ export const getDiscoverActivity = query({
       }
     }
 
-    // Get recently published projects
     const recentProjects = await ctx.db
       .query('projects')
       .withIndex('by_status', (q) => q.eq('status', 'published'))
       .order('desc')
       .take(10);
-    
-    for (const project of recentProjects) {
-      const owner = await ctx.db.get(project.ownerId);
-      activities.push({
-        id: `project-${project._id}`,
-        type: 'project',
-        title: 'New project launched',
-        description: `${project.title} by ${owner?.displayName || owner?.username}`,
-        timestamp: project.createdAt,
-        projectId: project._id,
-        projectTitle: project.title,
-        icon: 'Rocket',
-        color: 'accent',
-      });
+
+    if (recentProjects.length > 0) {
+      const ownerIds = [...new Set(recentProjects.map(p => p.ownerId))];
+      const owners = await Promise.all(ownerIds.map(id => ctx.db.get(id)));
+      const ownerMap = new Map(owners.filter(Boolean).map(o => [o!._id, o!]));
+
+      for (const project of recentProjects) {
+        const owner = ownerMap.get(project.ownerId);
+        activities.push({
+          id: `project-${project._id}`,
+          type: 'project',
+          title: 'New project launched',
+          description: `${project.title} by ${owner?.displayName || owner?.username}`,
+          timestamp: project.createdAt,
+          projectId: project._id,
+          projectTitle: project.title,
+          icon: 'Rocket',
+          color: 'accent',
+        });
+      }
     }
 
-    // Sort and limit
     activities.sort((a, b) => b.timestamp - a.timestamp);
     return activities.slice(0, limit);
   },

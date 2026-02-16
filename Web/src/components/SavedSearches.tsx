@@ -138,6 +138,7 @@ export function SavedSearches({ onApplyFilters, className = '' }: SavedSearchesP
             placeholder="Search name..."
             value={newSearchName}
             onChange={(e) => setNewSearchName(e.target.value)}
+            aria-label="Search name"
             className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
           />
 
@@ -147,24 +148,25 @@ export function SavedSearches({ onApplyFilters, className = '' }: SavedSearchesP
             <div className="flex flex-wrap gap-1">
               {INDUSTRIES.map(ind => (
                 <button
-                  key={ind}
-                  onClick={() => {
-                    const current = filters.industries || [];
-                    setFilters({
-                      ...filters,
-                      industries: current.includes(ind)
-                        ? current.filter(i => i !== ind)
-                        : [...current, ind]
-                    });
-                  }}
-                  className={`px-2 py-1 text-xs rounded-full transition-colors ${
-                    filters.industries?.includes(ind)
-                      ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
-                      : 'bg-neutral-700/50 text-neutral-400 hover:bg-neutral-700'
-                  }`}
-                >
-                  {ind}
-                </button>
+                   key={ind}
+                   onClick={() => {
+                     const current = filters.industries || [];
+                     setFilters({
+                       ...filters,
+                       industries: current.includes(ind)
+                         ? current.filter(i => i !== ind)
+                         : [...current, ind]
+                     });
+                   }}
+                   aria-pressed={filters.industries?.includes(ind)}
+                   className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                     filters.industries?.includes(ind)
+                       ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                       : 'bg-neutral-700/50 text-neutral-400 hover:bg-neutral-700'
+                   }`}
+                 >
+                   {ind}
+                 </button>
               ))}
             </div>
           </div>
@@ -175,24 +177,25 @@ export function SavedSearches({ onApplyFilters, className = '' }: SavedSearchesP
             <div className="flex flex-wrap gap-1">
               {STAGES.map(stage => (
                 <button
-                  key={stage.value}
-                  onClick={() => {
-                    const current = filters.stages || [];
-                    setFilters({
-                      ...filters,
-                      stages: current.includes(stage.value)
-                        ? current.filter(s => s !== stage.value)
-                        : [...current, stage.value]
-                    });
-                  }}
-                  className={`px-2 py-1 text-xs rounded-full transition-colors ${
-                    filters.stages?.includes(stage.value)
-                      ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
-                      : 'bg-neutral-700/50 text-neutral-400 hover:bg-neutral-700'
-                  }`}
-                >
-                  {stage.label}
-                </button>
+                   key={stage.value}
+                   onClick={() => {
+                     const current = filters.stages || [];
+                     setFilters({
+                       ...filters,
+                       stages: current.includes(stage.value)
+                         ? current.filter(s => s !== stage.value)
+                         : [...current, stage.value]
+                     });
+                   }}
+                   aria-pressed={filters.stages?.includes(stage.value)}
+                   className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                     filters.stages?.includes(stage.value)
+                       ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                       : 'bg-neutral-700/50 text-neutral-400 hover:bg-neutral-700'
+                   }`}
+                 >
+                   {stage.label}
+                 </button>
               ))}
             </div>
           </div>
@@ -260,16 +263,18 @@ export function SavedSearches({ onApplyFilters, className = '' }: SavedSearchesP
             <div key={search._id} className="p-3">
               <div className="flex items-center justify-between">
                 <button
-                  onClick={() => setExpandedId(expandedId === search._id ? null : search._id)}
-                  className="flex items-center gap-2 text-left flex-1"
-                >
-                  <span className="text-sm font-medium text-neutral-200">{search.name}</span>
-                  {expandedId === search._id ? (
-                    <ChevronUp className="w-4 h-4 text-neutral-500" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-neutral-500" />
-                  )}
-                </button>
+                   onClick={() => setExpandedId(expandedId === search._id ? null : search._id)}
+                   aria-expanded={expandedId === search._id}
+                   aria-controls={`search-filters-${search._id}`}
+                   className="flex items-center gap-2 text-left flex-1"
+                 >
+                   <span className="text-sm font-medium text-neutral-200">{search.name}</span>
+                   {expandedId === search._id ? (
+                     <ChevronUp className="w-4 h-4 text-neutral-500" />
+                   ) : (
+                     <ChevronDown className="w-4 h-4 text-neutral-500" />
+                   )}
+                 </button>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleToggleAlert(search._id, search.alertEnabled || false)}
@@ -278,21 +283,22 @@ export function SavedSearches({ onApplyFilters, className = '' }: SavedSearchesP
                         ? 'text-amber-400 bg-amber-500/20' 
                         : 'text-neutral-500 hover:bg-neutral-700'
                     }`}
-                    title={search.alertEnabled ? 'Disable alerts' : 'Enable alerts'}
+                    aria-label={search.alertEnabled ? 'Disable alerts' : 'Enable alerts'}
+                    aria-pressed={search.alertEnabled || false}
                   >
                     {search.alertEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
                   </button>
                   <button
                     onClick={() => onApplyFilters?.(search.filters)}
                     className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-                    title="Run search"
+                    aria-label="Run search"
                   >
                     <Play className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(search._id)}
                     className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors"
-                    title="Delete"
+                    aria-label="Delete search"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -301,6 +307,7 @@ export function SavedSearches({ onApplyFilters, className = '' }: SavedSearchesP
 
               {expandedId === search._id && (
                 <motion.div
+                  id={`search-filters-${search._id}`}
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   className="mt-2 pt-2 border-t border-neutral-700/30"

@@ -1,5 +1,6 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
+import { enforceRateLimit } from './rateLimits';
 
 // Apply to a project
 export const create = mutation({
@@ -22,6 +23,8 @@ export const create = mutation({
     if (!user) {
       throw new Error('User not found');
     }
+
+    await enforceRateLimit(ctx.db, user._id, 'applications');
 
     // Check if already applied
     const existingApp = await ctx.db
@@ -147,15 +150,16 @@ export const getMyApplications = query({
       .withIndex('by_applicant', (q) => q.eq('applicantId', user._id))
       .collect();
 
-    // Fetch project details for each application
-    const applicationsWithProjects = await Promise.all(
-      applications.map(async (app) => {
-        const project = await ctx.db.get(app.projectId);
-        return { ...app, project };
-      })
-    );
+    if (applications.length === 0) return [];
 
-    return applicationsWithProjects;
+    const projectIds = [...new Set(applications.map(app => app.projectId))];
+    const projects = await Promise.all(projectIds.map(id => ctx.db.get(id)));
+    const projectMap = new Map(projects.filter(Boolean).map(p => [p!._id, p!]));
+
+    return applications.map(app => ({
+      ...app,
+      project: projectMap.get(app.projectId),
+    }));
   },
 });
 

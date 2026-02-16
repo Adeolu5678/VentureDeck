@@ -17,10 +17,9 @@ class MilestonesRepository {
   /// Get milestones for a project
   Future<List<Milestone>> getProjectMilestones(String projectId) async {
     try {
-      final result = await _convex.query<List<dynamic>>(
-        'milestones:listByProject',
-        {'projectId': projectId},
-      );
+      final result = await _convex.query<List<dynamic>>('milestones:list', {
+        'projectId': projectId,
+      });
       return result
           .map((item) => _mapToMilestone(item as Map<String, dynamic>))
           .toList();
@@ -40,8 +39,11 @@ class MilestonesRepository {
       final result = await _convex.mutation<String>('milestones:create', {
         'projectId': projectId,
         'title': title,
-        if (description != null) 'description': description,
-        if (targetDate != null) 'targetDate': targetDate.millisecondsSinceEpoch,
+        'description': description ?? '',
+        // Backend expects 'date' (number), Dart uses 'targetDate'
+        'date':
+            targetDate?.millisecondsSinceEpoch ??
+            DateTime.now().millisecondsSinceEpoch,
       });
       return result;
     } catch (e) {
@@ -52,9 +54,15 @@ class MilestonesRepository {
   /// Update milestone status
   Future<bool> updateStatus(String milestoneId, MilestoneStatus status) async {
     try {
+      // Backend expects 'pending', 'completed', 'verified'
+      String statusStr = 'pending';
+      if (status == MilestoneStatus.completed) statusStr = 'completed';
+      // 'verified' is not in Dart enum yet? Enum has: inProgress, completed, overdue, pending.
+      // Map appropriately.
+
       await _convex.mutation('milestones:updateStatus', {
         'id': milestoneId,
-        'status': status.name,
+        'status': statusStr,
       });
       return true;
     } catch (e) {
@@ -65,7 +73,11 @@ class MilestonesRepository {
   /// Mark milestone as complete
   Future<bool> markComplete(String milestoneId) async {
     try {
-      await _convex.mutation('milestones:markComplete', {'id': milestoneId});
+      // Backend uses updateStatus for completion
+      await _convex.mutation('milestones:updateStatus', {
+        'id': milestoneId,
+        'status': 'completed',
+      });
       return true;
     } catch (e) {
       return false;
@@ -75,7 +87,7 @@ class MilestonesRepository {
   /// Delete a milestone
   Future<bool> deleteMilestone(String milestoneId) async {
     try {
-      await _convex.mutation('milestones:delete', {'id': milestoneId});
+      await _convex.mutation('milestones:remove', {'id': milestoneId});
       return true;
     } catch (e) {
       return false;

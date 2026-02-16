@@ -3,8 +3,22 @@
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import { ReactNode, useEffect, useCallback } from "react";
+import { ReactNode, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
+
+const FOCUSABLE_SELECTORS = [
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  'a[href]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll(FOCUSABLE_SELECTORS))
+    .filter((el) => (el as HTMLElement).offsetParent !== null) as HTMLElement[];
+}
 
 interface PremiumModalProps {
   isOpen: boolean;
@@ -27,23 +41,56 @@ export function PremiumModal({
   showCloseButton = true,
   className,
 }: PremiumModalProps) {
-  // Handle escape key
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+
   const handleEscape = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") {
       onClose();
     }
   }, [onClose]);
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key !== "Tab" || !modalRef.current) return;
+
+    const focusableElements = getFocusableElements(modalRef.current);
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (e.shiftKey && document.activeElement === firstElement) {
+      e.preventDefault();
+      lastElement.focus();
+    } else if (!e.shiftKey && document.activeElement === lastElement) {
+      e.preventDefault();
+      firstElement.focus();
+    }
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
+      previousActiveElement.current = document.activeElement as HTMLElement;
       document.addEventListener("keydown", handleEscape);
+      document.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
+
+      requestAnimationFrame(() => {
+        if (modalRef.current) {
+          const focusableElements = getFocusableElements(modalRef.current);
+          if (focusableElements.length > 0) {
+            focusableElements[0].focus();
+          }
+        }
+      });
     }
     return () => {
       document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "unset";
+      previousActiveElement.current?.focus();
     };
-  }, [isOpen, handleEscape]);
+  }, [isOpen, handleEscape, handleKeyDown]);
 
   const sizes = {
     sm: "max-w-sm",
@@ -69,10 +116,14 @@ export function PremiumModal({
 
           {/* Modal */}
           <motion.div
+            ref={modalRef}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-title"
             className={cn(
               "relative w-full",
               sizes[size],
@@ -89,7 +140,7 @@ export function PremiumModal({
             {/* Header */}
             <div className="flex items-start justify-between p-6 pb-0">
               <div>
-                <h2 className="text-xl font-display font-bold text-white">{title}</h2>
+                <h2 id="modal-title" className="text-xl font-display font-bold text-white">{title}</h2>
                 {description && (
                   <p className="text-sm text-muted-foreground mt-1">{description}</p>
                 )}

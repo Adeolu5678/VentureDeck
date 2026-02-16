@@ -51,7 +51,7 @@ To develop for Android without Android Studio:
    avdmanager create avd -n Pixel8 -k "system-images;android-34;google_apis;x86_64" -d "pixel_8"
    ```
 
-## 🚀 Getting Started
+## 🚀 Getting Started 
 
 ### Install Dependencies
 ```bash

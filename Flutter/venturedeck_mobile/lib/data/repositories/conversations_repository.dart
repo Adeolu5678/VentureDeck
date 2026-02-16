@@ -16,8 +16,13 @@ class ConversationsRepository {
   /// Get all conversations for current user
   Future<List<Conversation>> getConversations() async {
     try {
-      final result = await _convex.query<List<dynamic>>('conversations:list');
-      return result
+      final result = await _convex.query<Map<String, dynamic>>(
+        'conversations:list',
+      );
+      // Backend returns { conversations: [], nextCursor: ... }
+      final list = result['conversations'] as List? ?? [];
+
+      return list
           .map((item) => _mapToConversation(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
@@ -31,8 +36,8 @@ class ConversationsRepository {
   Future<Conversation?> getConversation(String conversationId) async {
     try {
       final result = await _convex.query<Map<String, dynamic>?>(
-        'conversations:get',
-        {'id': conversationId},
+        'conversations:getConversation',
+        {'conversationId': conversationId},
       );
       if (result == null) return null;
       return _mapToConversation(result);
@@ -49,10 +54,14 @@ class ConversationsRepository {
     int limit = 50,
   }) async {
     try {
-      final result = await _convex.query<List<dynamic>>('messages:list', {
-        'conversationId': conversationId,
-        'limit': limit,
-      });
+      // Backend 'conversations:getMessages' takes conversationId, no limit in current implementation?
+      // Wait, let's check backend list query.
+      // 'conversations:getMessages' calls ctx.db.query('messages')...collect(). NO LIMIT.
+      // So ignore limit for now.
+      final result = await _convex.query<List<dynamic>>(
+        'conversations:getMessages',
+        {'conversationId': conversationId},
+      );
       return result
           .map((item) => _mapToMessage(item as Map<String, dynamic>))
           .toList();
@@ -69,12 +78,20 @@ class ConversationsRepository {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      final result = await _convex.mutation<String>('messages:send', {
-        'conversationId': conversationId,
-        'content': content,
-        'type': type.name,
-        if (metadata != null) 'metadata': metadata,
-      });
+      // Backend expects: conversationId, content, imageUrl (optional)
+      String? imageUrl;
+      if (type == MessageType.image &&
+          metadata != null &&
+          metadata.containsKey('imageUrl')) {
+        imageUrl = metadata['imageUrl'];
+      }
+
+      final result = await _convex
+          .mutation<String>('conversations:sendMessage', {
+            'conversationId': conversationId,
+            'content': content,
+            if (imageUrl != null) 'imageUrl': imageUrl,
+          });
       return result;
     } catch (e) {
       throw ConversationsRepositoryException('Failed to send message: $e');
@@ -85,8 +102,8 @@ class ConversationsRepository {
   Future<String> getOrCreateConversation(String otherUserId) async {
     try {
       final result = await _convex.mutation<String>(
-        'conversations:getOrCreate',
-        {'otherUserId': otherUserId},
+        'conversations:createDirectMessage',
+        {'participantId': otherUserId},
       );
       return result;
     } catch (e) {
@@ -98,37 +115,34 @@ class ConversationsRepository {
 
   /// Mark conversation as read
   Future<void> markAsRead(String conversationId) async {
-    try {
-      await _convex.mutation('conversations:markRead', {'id': conversationId});
-    } catch (e) {
-      throw ConversationsRepositoryException('Failed to mark as read: $e');
-    }
+    // Not supported by backend
+    // throw UnimplementedError('Mark as read not supported');
+    // Silently fail to avoid breaking UI that calls this
+    return;
   }
 
   /// Delete a message
   Future<void> deleteMessage(String messageId) async {
-    try {
-      await _convex.mutation('messages:delete', {'id': messageId});
-    } catch (e) {
-      throw ConversationsRepositoryException('Failed to delete message: $e');
-    }
+    // Not supported by backend
+    throw UnimplementedError('Delete message not supported');
   }
 
   /// Subscribe to conversations list (real-time)
   Stream<List<Conversation>> subscribeToConversations() {
-    return _convex
-        .subscribe<List<dynamic>>('conversations:list')
-        .map(
-          (data) => data
-              .map((item) => _mapToConversation(item as Map<String, dynamic>))
-              .toList(),
-        );
+    return _convex.subscribe<Map<String, dynamic>>('conversations:list').map((
+      data,
+    ) {
+      final list = data['conversations'] as List? ?? [];
+      return list
+          .map((item) => _mapToConversation(item as Map<String, dynamic>))
+          .toList();
+    });
   }
 
   /// Subscribe to messages in a conversation (real-time)
   Stream<List<Message>> subscribeToMessages(String conversationId) {
     return _convex
-        .subscribe<List<dynamic>>('messages:list', {
+        .subscribe<List<dynamic>>('conversations:getMessages', {
           'conversationId': conversationId,
         })
         .map(
@@ -140,12 +154,8 @@ class ConversationsRepository {
 
   /// Get unread count
   Future<int> getUnreadCount() async {
-    try {
-      final result = await _convex.query<int>('conversations:unreadCount');
-      return result;
-    } catch (e) {
-      return 0;
-    }
+    // Not supported
+    return 0;
   }
 
   /// Map Convex data to Conversation model

@@ -12,6 +12,7 @@ import { PremiumButton } from '@/components/ui/PremiumButton';
 import { PremiumCard } from '@/components/ui/PremiumCard';
 import { toast } from 'sonner';
 import { useBottomNav } from '@/context/BottomNavContext';
+import { logError } from '@/lib/errorTracking';
 
 interface UserData {
   _id: Id<"users">;
@@ -81,7 +82,7 @@ export default function PublicProfilePage() {
       await sendFriendRequest({ friendId: userId });
       toast.success('Friend request sent');
     } catch (e) {
-      console.error(e);
+      logError(e, { component: 'PublicProfilePage', action: 'sendFriendRequest' });
       toast.error('Failed to send friend request');
     }
   }, [sendFriendRequest, userId]);
@@ -154,7 +155,7 @@ export default function PublicProfilePage() {
       setVouchText('');
       toast.success('Vouch submitted successfully');
     } catch (e) {
-      console.error(e);
+      logError(e, { component: 'PublicProfilePage', action: 'createVouch' });
       toast.error('Failed to submit vouch');
     }
   };

@@ -70,10 +70,10 @@ class BountyActionsNotifier extends AsyncNotifier<void> {
         projectId: projectId,
         title: title,
         description: description,
-        reward: reward,
-        type: type,
-        skills: skills,
-        deadline: deadline,
+        reward: reward, // Repository parses to string
+        // type: type,
+        // skills: skills,
+        // deadline: deadline,
       );
 
       ref.invalidate(projectBountiesProvider(projectId));

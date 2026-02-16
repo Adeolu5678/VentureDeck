@@ -43,6 +43,8 @@ export function MatchExplanationCard({
       <div className="bg-neutral-800/50 rounded-lg border border-neutral-700/50">
         <button
           onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+          aria-controls="match-explanation-details"
           className="w-full p-3 flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
@@ -65,6 +67,7 @@ export function MatchExplanationCard({
 
         {expanded && (
           <motion.div
+            id="match-explanation-details"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             className="px-3 pb-3 space-y-2"

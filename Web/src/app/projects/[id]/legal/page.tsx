@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { PremiumButton } from '@/components/ui/PremiumButton';
+import { logError } from '@/lib/errorTracking';
 
 interface LegalDoc {
   _id: Id<"legalDocs">;
@@ -103,7 +104,7 @@ export default function LegalDocumentsPage() {
       toast.success(`${uploadType} document uploaded successfully`);
       setShowUploadModal(false);
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'LegalDocumentsPage', action: 'uploadDocument' });
       toast.error('Failed to upload document');
     } finally {
       setIsUploading(false);
@@ -118,7 +119,7 @@ export default function LegalDocumentsPage() {
       await signDoc({ docId });
       toast.success('Document signed successfully');
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'LegalDocumentsPage', action: 'signDocument' });
       toast.error('Failed to sign document');
     }
   };
@@ -129,7 +130,7 @@ export default function LegalDocumentsPage() {
       await deleteDoc({ docId });
       toast.success('Document deleted');
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'LegalDocumentsPage', action: 'deleteDocument' });
       toast.error('Failed to delete document');
     }
   };
@@ -165,7 +166,7 @@ export default function LegalDocumentsPage() {
       setShowTemplateModal(false);
       resetTemplateForm();
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'LegalDocumentsPage', action: 'generateDocument' });
       toast.error('Failed to generate document');
     } finally {
       setIsUploading(false);

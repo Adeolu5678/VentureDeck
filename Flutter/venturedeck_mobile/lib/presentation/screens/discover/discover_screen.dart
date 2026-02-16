@@ -3,11 +3,15 @@
 /// Project discovery and search screen for investors.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:venturedeck_mobile/core/theme/app_theme.dart';
-import 'package:venturedeck_mobile/presentation/widgets/premium_card.dart';
+import 'package:venturedeck_mobile/domain/providers/projects_provider.dart';
+import 'package:venturedeck_mobile/presentation/widgets/project_card.dart';
 
 /// Discover screen for browsing projects
 class DiscoverScreen extends ConsumerStatefulWidget {
@@ -19,15 +23,47 @@ class DiscoverScreen extends ConsumerStatefulWidget {
 
 class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   final _searchController = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    final filter = ref.read(projectsFilterProvider);
+    if (filter.search != null) {
+      _searchController.text = filter.search!;
+    }
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      ref.read(projectsFilterProvider.notifier).update((state) {
+        return state.copyWith(search: query.isEmpty ? null : query);
+      });
+    });
+  }
+
+  void _onIndustrySelected(String industry) {
+    ref.read(projectsFilterProvider.notifier).update((state) {
+      if (state.industry == industry) {
+        return state.copyWith(industry: null); // Toggle off
+      }
+      return state.copyWith(industry: industry);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final filter = ref.watch(projectsFilterProvider);
+    final projectsAsync = ref.watch(publishedProjectsProvider(filter));
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
@@ -71,6 +107,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                     ),
                     child: TextField(
                       controller: _searchController,
+                      onChanged: _onSearchChanged,
                       style: AppTypography.bodyMedium.copyWith(
                         color: AppColors.textPrimary,
                       ),
@@ -114,18 +151,40 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                     children: [
                       Text('Industries', style: AppTypography.titleSmall),
                       const SizedBox(height: AppSpacing.sm),
-                      const SingleChildScrollView(
+                      SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
                             _IndustryChip(
-                              'FinTech',
-                              Icons.account_balance_wallet,
+                              label: 'FinTech',
+                              icon: Icons.account_balance_wallet,
+                              isSelected: filter.industry == 'FinTech',
+                              onTap: () => _onIndustrySelected('FinTech'),
                             ),
-                            _IndustryChip('HealthTech', Icons.medical_services),
-                            _IndustryChip('EdTech', Icons.school),
-                            _IndustryChip('CleanTech', Icons.eco),
-                            _IndustryChip('AI/ML', Icons.psychology),
+                            _IndustryChip(
+                              label: 'HealthTech',
+                              icon: Icons.medical_services,
+                              isSelected: filter.industry == 'HealthTech',
+                              onTap: () => _onIndustrySelected('HealthTech'),
+                            ),
+                            _IndustryChip(
+                              label: 'EdTech',
+                              icon: Icons.school,
+                              isSelected: filter.industry == 'EdTech',
+                              onTap: () => _onIndustrySelected('EdTech'),
+                            ),
+                            _IndustryChip(
+                              label: 'CleanTech',
+                              icon: Icons.eco,
+                              isSelected: filter.industry == 'CleanTech',
+                              onTap: () => _onIndustrySelected('CleanTech'),
+                            ),
+                            _IndustryChip(
+                              label: 'AI/ML',
+                              icon: Icons.psychology,
+                              isSelected: filter.industry == 'AI/ML',
+                              onTap: () => _onIndustrySelected('AI/ML'),
+                            ),
                           ],
                         ),
                       ),
@@ -136,7 +195,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
 
               const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
 
-              // Featured section
+              // Featured/List section
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -149,18 +208,27 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Featured Projects',
+                            filter.industry != null
+                                ? '${filter.industry} Projects'
+                                : 'All Projects',
                             style: AppTypography.titleMedium,
                           ),
-                          TextButton(
-                            onPressed: () {},
-                            child: Text(
-                              'See All',
-                              style: AppTypography.labelSmall.copyWith(
-                                color: AppColors.primary,
+                          if (filter.search != null || filter.industry != null)
+                            TextButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                ref
+                                        .read(projectsFilterProvider.notifier)
+                                        .state =
+                                    const ProjectsFilter();
+                              },
+                              child: Text(
+                                'Clear Filters',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.primary,
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ],
@@ -168,81 +236,48 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                 ),
               ),
 
-              // Featured projects placeholder
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 200,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
+
+              // Projects List
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                sliver: projectsAsync.when(
+                  data: (projects) {
+                    if (projects.isEmpty) {
+                      return const SliverToBoxAdapter(child: _EmptyState());
+                    }
+                    return SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final project = projects[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                          child:
+                              ProjectCard(
+                                    project: project,
+                                    showActions: false, // Investor view
+                                    onTap: () =>
+                                        context.push('/projects/${project.id}'),
+                                  )
+                                  .animate(
+                                    delay: Duration(milliseconds: 50 * index),
+                                  )
+                                  .fadeIn()
+                                  .slideX(begin: 0.1, end: 0),
+                        );
+                      }, childCount: projects.length),
+                    );
+                  },
+                  loading: () => const SliverToBoxAdapter(
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(AppSpacing.xl),
+                        child: CircularProgressIndicator(),
+                      ),
                     ),
-                    itemCount: 3,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                            padding: EdgeInsets.only(
-                              right: index < 2 ? AppSpacing.md : 0,
-                            ),
-                            child: _FeaturedProjectCard(index: index),
-                          )
-                          .animate(
-                            delay: Duration(milliseconds: 200 + index * 50),
-                          )
-                          .fadeIn()
-                          .slideX(begin: 0.1, end: 0);
-                    },
                   ),
-                ),
-              ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
-
-              // AI Matches section
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: PremiumCard(
-                    showGradientBorder: true,
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: const BoxDecoration(
-                                gradient: AppColors.primaryGradient,
-                                borderRadius: AppRadius.radiusMd,
-                              ),
-                              child: const Icon(
-                                Icons.auto_awesome,
-                                color: AppColors.backgroundDark,
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'AI-Powered Matching',
-                                    style: AppTypography.titleSmall.copyWith(
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Get personalized project recommendations',
-                                    style: AppTypography.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.arrow_forward, color: AppColors.primary),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ).animate(delay: 400.ms).fadeIn().slideY(begin: 0.1, end: 0),
+                  error: (error, _) => SliverToBoxAdapter(
+                    child: Center(child: Text('Error: $error')),
+                  ),
                 ),
               ),
 
@@ -271,7 +306,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
             Text('Filter Projects', style: AppTypography.titleLarge),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'Filters coming soon...',
+              'More filters coming soon...',
               style: AppTypography.bodyMedium.copyWith(
                 color: AppColors.textMuted,
               ),
@@ -286,114 +321,82 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
 
 /// Industry chip widget
 class _IndustryChip extends StatelessWidget {
-  const _IndustryChip(this.label, this.icon);
+  const _IndustryChip({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   final String label;
   final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.sm),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.backgroundCard,
-          borderRadius: AppRadius.radiusMd,
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: AppColors.primary),
-            const SizedBox(width: AppSpacing.xs),
-            Text(label, style: AppTypography.labelSmall),
-          ],
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.1)
+                : AppColors.backgroundCard,
+            borderRadius: AppRadius.radiusMd,
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                label,
+                style: AppTypography.labelSmall.copyWith(
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Featured project card widget
-class _FeaturedProjectCard extends StatelessWidget {
-  const _FeaturedProjectCard({required this.index});
-
-  final int index;
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
-    final colors = [AppColors.primary, AppColors.accent, AppColors.info];
-
-    return SizedBox(
-      width: 280,
-      child: PremiumCard(
-        onTap: () {},
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: colors[index % colors.length].withValues(alpha: 0.2),
-                    borderRadius: AppRadius.radiusMd,
-                  ),
-                  child: Icon(
-                    Icons.rocket_launch,
-                    color: colors[index % colors.length],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Project ${index + 1}',
-                        style: AppTypography.titleSmall,
-                      ),
-                      Text('FinTech • Seed', style: AppTypography.bodySmall),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            const Icon(Icons.search_off, size: 48, color: AppColors.textMuted),
             const SizedBox(height: AppSpacing.md),
             Text(
-              'A brief description of this amazing project...',
-              style: AppTypography.bodySmall,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.trending_up, size: 16, color: AppColors.success),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${75 + index * 5}',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.success,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '\$${250 + index * 100}K',
-                  style: AppTypography.labelMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+              'No projects found',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textMuted,
+              ),
             ),
           ],
         ),

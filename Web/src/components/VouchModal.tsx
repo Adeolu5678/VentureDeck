@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { Id } from '@convex/_generated/dataModel';
@@ -8,6 +8,20 @@ import { Award, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { PremiumButton } from '@/components/ui/PremiumButton';
+
+const FOCUSABLE_SELECTORS = [
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  'a[href]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll(FOCUSABLE_SELECTORS))
+    .filter((el) => (el as HTMLElement).offsetParent !== null) as HTMLElement[];
+}
 
 interface VouchModalProps {
   targetUserId: Id<'users'>;
@@ -32,8 +46,58 @@ export function VouchModal({ targetUserId, targetUserName, isOpen, onClose }: Vo
   const [customRelationship, setCustomRelationship] = useState('');
   const [text, setText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
 
   const createVouch = useMutation(api.vouches.create);
+
+  const handleEscape = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      onClose();
+    }
+  }, [onClose]);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key !== "Tab" || !modalRef.current) return;
+
+    const focusableElements = getFocusableElements(modalRef.current);
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (e.shiftKey && document.activeElement === firstElement) {
+      e.preventDefault();
+      lastElement.focus();
+    } else if (!e.shiftKey && document.activeElement === lastElement) {
+      e.preventDefault();
+      firstElement.focus();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      previousActiveElement.current = document.activeElement as HTMLElement;
+      document.addEventListener("keydown", handleEscape);
+      document.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+
+      requestAnimationFrame(() => {
+        if (modalRef.current) {
+          const focusableElements = getFocusableElements(modalRef.current);
+          if (focusableElements.length > 0) {
+            focusableElements[0].focus();
+          }
+        }
+      });
+    }
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "unset";
+      previousActiveElement.current?.focus();
+    };
+  }, [isOpen, handleEscape, handleKeyDown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,9 +151,13 @@ export function VouchModal({ targetUserId, targetUserName, isOpen, onClose }: Vo
           
           {/* Modal */}
           <motion.div
+            ref={modalRef}
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="vouch-modal-title"
             className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-lg shadow-2xl"
           >
             {/* Header */}
@@ -99,12 +167,13 @@ export function VouchModal({ targetUserId, targetUserName, isOpen, onClose }: Vo
                   <Award className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold">Write a Vouch</h2>
+                  <h2 id="vouch-modal-title" className="text-lg font-bold">Write a Vouch</h2>
                   <p className="text-sm text-muted-foreground">for {targetUserName}</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
+                aria-label="Close modal"
                 className="p-2 hover:bg-muted rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />

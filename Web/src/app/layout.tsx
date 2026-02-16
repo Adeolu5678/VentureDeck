@@ -8,6 +8,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { TopNav } from "@/components/layout/TopNav";
 import { Toaster } from "sonner";
 import { GlobalNotifications } from "@/components/GlobalNotifications";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 const sora = Sora({ 
   subsets: ["latin"],
@@ -80,38 +81,40 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${sora.variable} ${outfit.variable}`}>
       <body className="font-body antialiased" suppressHydrationWarning>
-        <ConvexClientProvider>
-          <BottomNavProvider>
-            <KeyboardShortcutsProvider>
-              <div className="relative min-h-screen bg-background text-foreground pb-20 selection:bg-primary/30 selection:text-primary-foreground overflow-x-hidden">
-                {/* Noise Texture Overlay */}
-                <div className="bg-noise" />
-                
-                {/* Floating Orbs for Ambient Depth */}
-                <div className="orb-primary w-[600px] h-[600px] -top-[300px] -left-[200px] opacity-50" />
-                <div className="orb-accent w-[400px] h-[400px] top-[40%] -right-[150px] opacity-40" />
-                <div className="orb-primary w-[300px] h-[300px] bottom-[10%] left-[10%] opacity-30" />
+        <ErrorBoundary>
+          <ConvexClientProvider>
+            <BottomNavProvider>
+              <KeyboardShortcutsProvider>
+                <div className="relative min-h-screen bg-background text-foreground pb-20 selection:bg-primary/30 selection:text-primary-foreground overflow-x-hidden">
+                  {/* Noise Texture Overlay */}
+                  <div className="bg-noise" />
+                  
+                  {/* Floating Orbs for Ambient Depth */}
+                  <div className="orb-primary w-[600px] h-[600px] -top-[300px] -left-[200px] opacity-50" />
+                  <div className="orb-accent w-[400px] h-[400px] top-[40%] -right-[150px] opacity-40" />
+                  <div className="orb-primary w-[300px] h-[300px] bottom-[10%] left-[10%] opacity-30" />
 
-                <TopNav />
-                {children}
-                <BottomNav />
-                <Toaster 
-                  position="top-right" 
-                  theme="dark" 
-                  toastOptions={{
-                    style: {
-                      background: 'hsl(240 8% 8% / 0.9)',
-                      border: '1px solid hsl(240 5% 18%)',
-                      backdropFilter: 'blur(16px)',
-                      color: 'white',
-                    }
-                  }}
-                />
-                <GlobalNotifications />
-              </div>
-            </KeyboardShortcutsProvider>
-          </BottomNavProvider>
-        </ConvexClientProvider>
+                  <TopNav />
+                  {children}
+                  <BottomNav />
+                  <Toaster 
+                    position="top-right" 
+                    theme="dark" 
+                    toastOptions={{
+                      style: {
+                        background: 'hsl(240 8% 8% / 0.9)',
+                        border: '1px solid hsl(240 5% 18%)',
+                        backdropFilter: 'blur(16px)',
+                        color: 'white',
+                      }
+                    }}
+                  />
+                  <GlobalNotifications />
+                </div>
+              </KeyboardShortcutsProvider>
+            </BottomNavProvider>
+          </ConvexClientProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

@@ -14,8 +14,10 @@ class ProjectsRepository {
   final ConvexService _convex;
 
   /// Get all published projects
+  /// [stage] is currently ignored by the backend
   Future<List<Project>> getPublishedProjects({
     String? industry,
+    String? search,
     ProjectStage? stage,
     int? minTractionScore,
     int limit = 20,
@@ -23,15 +25,15 @@ class ProjectsRepository {
   }) async {
     try {
       final result = await _convex
-          .query<List<dynamic>>('projects:listPublished', {
+          .query<Map<String, dynamic>>('projects:list', {
             if (industry != null) 'industry': industry,
-            if (stage != null) 'stage': stage.name,
-            if (minTractionScore != null) 'minTractionScore': minTractionScore,
+            if (search != null && search.isNotEmpty) 'search': search,
             'limit': limit,
             'offset': offset,
           });
 
-      return result
+      final projects = result['projects'] as List;
+      return projects
           .map((item) => _mapToProject(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
@@ -57,7 +59,7 @@ class ProjectsRepository {
   Future<Project?> getProject(String projectId) async {
     try {
       final result = await _convex.query<Map<String, dynamic>?>(
-        'projects:getById',
+        'projects:get',
         {'id': projectId},
       );
 
@@ -69,6 +71,7 @@ class ProjectsRepository {
   }
 
   /// Create a new project
+  /// Note: [tags], [stage], [location] are not currently supported by the backend
   Future<String> createProject({
     required String title,
     required String tagline,
@@ -88,9 +91,8 @@ class ProjectsRepository {
         'industry': industry,
         'fundingGoal': fundingGoal,
         'equityOffered': equityOffered,
-        if (tags != null) 'tags': tags,
-        if (stage != null) 'stage': stage.name,
-        if (location != null) 'location': location,
+        // 'logoUrl': logoUrl, // TODO: Add support for logo/pitch deck
+        // 'pitchDeckUrl': pitchDeckUrl,
       });
 
       return result;
@@ -114,6 +116,19 @@ class ProjectsRepository {
     ProjectStatus? status,
   }) async {
     try {
+      String? statusString;
+      if (status != null) {
+        statusString = status == ProjectStatus.draft
+            ? 'draft'
+            : status == ProjectStatus.published
+            ? 'published'
+            : status == ProjectStatus.funded
+            ? 'funded'
+            : status == ProjectStatus.closed
+            ? 'closed'
+            : null;
+      }
+
       await _convex.mutation('projects:update', {
         'id': projectId,
         if (title != null) 'title': title,
@@ -122,10 +137,7 @@ class ProjectsRepository {
         if (industry != null) 'industry': industry,
         if (fundingGoal != null) 'fundingGoal': fundingGoal,
         if (equityOffered != null) 'equityOffered': equityOffered,
-        if (tags != null) 'tags': tags,
-        if (stage != null) 'stage': stage.name,
-        if (location != null) 'location': location,
-        if (status != null) 'status': status.name,
+        if (statusString != null) 'status': statusString,
       });
     } catch (e) {
       throw ProjectsRepositoryException('Failed to update project: $e');
@@ -134,17 +146,17 @@ class ProjectsRepository {
 
   /// Delete a project
   Future<void> deleteProject(String projectId) async {
-    try {
-      await _convex.mutation('projects:delete', {'id': projectId});
-    } catch (e) {
-      throw ProjectsRepositoryException('Failed to delete project: $e');
-    }
+    // Not supported by backend
+    throw UnimplementedError('Delete project is not supported by the backend');
   }
 
   /// Publish a project
   Future<void> publishProject(String projectId) async {
     try {
-      await _convex.mutation('projects:publish', {'id': projectId});
+      await _convex.mutation('projects:update', {
+        'id': projectId,
+        'status': 'published',
+      });
     } catch (e) {
       throw ProjectsRepositoryException('Failed to publish project: $e');
     }
@@ -153,7 +165,9 @@ class ProjectsRepository {
   /// Follow a project (for investors)
   Future<void> followProject(String projectId) async {
     try {
-      await _convex.mutation('projects:follow', {'projectId': projectId});
+      await _convex.mutation('project_followers:follow', {
+        'projectId': projectId,
+      });
     } catch (e) {
       throw ProjectsRepositoryException('Failed to follow project: $e');
     }
@@ -162,7 +176,9 @@ class ProjectsRepository {
   /// Unfollow a project
   Future<void> unfollowProject(String projectId) async {
     try {
-      await _convex.mutation('projects:unfollow', {'projectId': projectId});
+      await _convex.mutation('project_followers:unfollow', {
+        'projectId': projectId,
+      });
     } catch (e) {
       throw ProjectsRepositoryException('Failed to unfollow project: $e');
     }
@@ -171,9 +187,10 @@ class ProjectsRepository {
   /// Check if current user is following a project
   Future<bool> isFollowing(String projectId) async {
     try {
-      final result = await _convex.query<bool>('projects:isFollowing', {
-        'projectId': projectId,
-      });
+      final result = await _convex.query<bool>(
+        'project_followers:isFollowing',
+        {'projectId': projectId},
+      );
       return result;
     } catch (e) {
       return false;
@@ -183,7 +200,9 @@ class ProjectsRepository {
   /// Get projects followed by current user
   Future<List<Project>> getFollowedProjects() async {
     try {
-      final result = await _convex.query<List<dynamic>>('projects:getFollowed');
+      final result = await _convex.query<List<dynamic>>(
+        'project_followers:getFollowedProjects',
+      );
       return result
           .map((item) => _mapToProject(item as Map<String, dynamic>))
           .toList();
@@ -197,10 +216,13 @@ class ProjectsRepository {
   /// Search projects
   Future<List<Project>> searchProjects(String query) async {
     try {
-      final result = await _convex.query<List<dynamic>>('projects:search', {
-        'query': query,
-      });
-      return result
+      final result = await _convex.query<Map<String, dynamic>>(
+        'projects:list',
+        {'search': query, 'limit': 50},
+      );
+
+      final projects = result['projects'] as List;
+      return projects
           .map((item) => _mapToProject(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
@@ -211,7 +233,7 @@ class ProjectsRepository {
   /// Subscribe to project updates (real-time)
   Stream<Project?> subscribeToProject(String projectId) {
     return _convex
-        .subscribe<Map<String, dynamic>?>('projects:getById', {'id': projectId})
+        .subscribe<Map<String, dynamic>?>('projects:get', {'id': projectId})
         .map((data) => data != null ? _mapToProject(data) : null);
   }
 

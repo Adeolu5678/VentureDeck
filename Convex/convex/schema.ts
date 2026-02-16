@@ -423,4 +423,16 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_user', ['userId']),
+
+  // Rate Limits table - for tracking user action rates
+  rateLimits: defineTable({
+    userId: v.id('users'),
+    limitType: v.union(
+      v.literal('messages'),
+      v.literal('applications'),
+      v.literal('friendRequests')
+    ),
+    timestamps: v.array(v.number()),
+  })
+    .index('by_user_type', ['userId', 'limitType']),
 });

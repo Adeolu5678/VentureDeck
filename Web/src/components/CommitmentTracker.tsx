@@ -143,6 +143,8 @@ export function CommitmentTracker({
         <>
           <button
             onClick={() => setExpanded(!expanded)}
+            aria-expanded={expanded}
+            aria-controls="investor-list"
             className="w-full flex items-center justify-center gap-1 py-2 text-xs text-neutral-400 hover:text-neutral-200 transition-colors"
           >
             {expanded ? (
@@ -160,6 +162,7 @@ export function CommitmentTracker({
 
           {expanded && (
             <motion.div
+              id="investor-list"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}

@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Id } from '@convex/_generated/dataModel';
 import Image from 'next/image';
 import { toast } from 'sonner';
+import { logError } from '@/lib/errorTracking';
 
 export default function ConversationPage() {
   const params = useParams();
@@ -67,7 +68,7 @@ export default function ConversationPage() {
       });
       setNewMessage('');
     } catch (error) {
-      console.error('Failed to send message:', error);
+      logError(error, { component: 'ConversationPage', action: 'sendMessage' });
       alert('Failed to send message.');
     }
   };
@@ -240,17 +241,32 @@ export default function ConversationPage() {
 function AcceptButton({ applicationId }: { applicationId: Id<'applications'> }) {
   const acceptApplication = useMutation(api.applications.accept);
   const [isPending, setIsPending] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleAccept = async () => {
+    if (!isMountedRef.current) return;
     setIsPending(true);
     try {
       await acceptApplication({ applicationId });
-      toast.success('Applicant accepted and added to workspace!');
+      if (isMountedRef.current) {
+        toast.success('Applicant accepted and added to workspace!');
+      }
     } catch (error) {
-      console.error('Failed to accept application:', error);
-      toast.error('Failed to accept applicant');
+      logError(error, { component: 'ConversationPage', action: 'acceptApplication' });
+      if (isMountedRef.current) {
+        toast.error('Failed to accept applicant');
+      }
     } finally {
-      setIsPending(false);
+      if (isMountedRef.current) {
+        setIsPending(false);
+      }
     }
   };
 
@@ -268,17 +284,32 @@ function AcceptButton({ applicationId }: { applicationId: Id<'applications'> }) 
 function RejectButton({ applicationId }: { applicationId: Id<'applications'> }) {
   const rejectApplication = useMutation(api.applications.reject);
   const [isPending, setIsPending] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleReject = async () => {
+    if (!isMountedRef.current) return;
     setIsPending(true);
     try {
       await rejectApplication({ applicationId });
-      toast.success('Applicant rejected. Conversation closed.');
+      if (isMountedRef.current) {
+        toast.success('Applicant rejected. Conversation closed.');
+      }
     } catch (error) {
-      console.error('Failed to reject application:', error);
-      toast.error('Failed to reject applicant');
+      logError(error, { component: 'ConversationPage', action: 'rejectApplication' });
+      if (isMountedRef.current) {
+        toast.error('Failed to reject applicant');
+      }
     } finally {
-      setIsPending(false);
+      if (isMountedRef.current) {
+        setIsPending(false);
+      }
     }
   };
 

@@ -171,7 +171,7 @@ class AuthNotifier extends AsyncNotifier<User?> {
   /// Update user role
   Future<bool> updateRole(UserRole role) async {
     try {
-      await ConvexService.instance.mutation('users:updateRole', {
+      await ConvexService.instance.mutation('users:setRole', {
         'role': role == UserRole.entrepreneur ? 'entrepreneur' : 'investor',
       });
 

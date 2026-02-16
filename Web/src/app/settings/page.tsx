@@ -15,6 +15,7 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { logError } from '@/lib/errorTracking';
 
 interface SettingsUser {
   clerkId: string;
@@ -97,7 +98,7 @@ export default function SettingsPage() {
       });
       toast.success('Profile updated successfully');
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'SettingsPage', action: 'updateProfile' });
       toast.error('Failed to update profile');
     } finally {
       setIsSaving(false);
@@ -174,7 +175,7 @@ export default function SettingsPage() {
       });
       toast.success('Profile picture updated');
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'SettingsPage', action: 'uploadAvatar' });
       toast.error('Failed to upload image');
     }
   };

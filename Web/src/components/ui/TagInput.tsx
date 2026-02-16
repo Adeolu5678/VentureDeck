@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, KeyboardEvent } from 'react';
+import { memo, useState, KeyboardEvent } from 'react';
 import { X } from 'lucide-react';
 
 interface TagInputProps {
@@ -10,7 +10,7 @@ interface TagInputProps {
   maxTags?: number;
 }
 
-export function TagInput({ placeholder = 'Add a tag...', tags, onTagsChange, maxTags = 10 }: TagInputProps) {
+export const TagInput = memo(function TagInput({ placeholder = 'Add a tag...', tags, onTagsChange, maxTags = 10 }: TagInputProps) {
   const [inputValue, setInputValue] = useState('');
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -45,6 +45,7 @@ export function TagInput({ placeholder = 'Add a tag...', tags, onTagsChange, max
             {tag}
             <button
               onClick={() => removeTag(index)}
+              aria-label={`Remove ${tag} tag`}
               className="hover:text-indigo-300 focus:outline-none"
             >
               <X size={12} />
@@ -55,6 +56,7 @@ export function TagInput({ placeholder = 'Add a tag...', tags, onTagsChange, max
           type="text"
           className="flex-1 bg-transparent outline-none text-sm text-slate-200 placeholder:text-slate-500 min-w-[120px]"
           placeholder={tags.length < maxTags ? placeholder : ''}
+          aria-label="Add a tag"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -62,9 +64,9 @@ export function TagInput({ placeholder = 'Add a tag...', tags, onTagsChange, max
           disabled={tags.length >= maxTags}
         />
       </div>
-      <p className="mt-1 text-xs text-slate-500">
+<p className="mt-1 text-xs text-slate-500">
         {tags.length}/{maxTags} tags
       </p>
     </div>
   );
-}
+});

@@ -5,8 +5,10 @@ import { useMutation, useAction } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { useRouter } from 'next/navigation';
 import { Upload, Check, ChevronRight, ChevronLeft } from 'lucide-react';
+import { toast } from 'sonner';
 import { PremiumButton } from '@/components/ui/PremiumButton';
 import { useBottomNav } from '@/context/BottomNavContext';
+import { logError } from '@/lib/errorTracking';
 
 export default function CreateProjectPage() {
   const router = useRouter();
@@ -37,11 +39,13 @@ export default function CreateProjectPage() {
     if (!file) return;
 
     try {
-      // 1. Get upload URL
-      const postUrl = await generateUploadUrl();
+      const { uploadUrl } = await generateUploadUrl({ 
+        filename: file.name, 
+        mimeType: file.type, 
+        sizeBytes: file.size 
+      });
       
-      // 2. Upload file
-      const result = await fetch(postUrl, {
+      const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
         body: file,
@@ -51,9 +55,9 @@ export default function CreateProjectPage() {
       
       // 3. Save storageId
       setFormData((prev) => ({ ...prev, [field]: storageId }));
-    } catch (error) {
-      console.error("Upload failed:", error);
-      alert("Upload failed. Please try again.");
+} catch (error) {
+      logError(error, { component: 'CreateProjectPage', action: 'fileUpload', metadata: { field } });
+      toast.error("Upload failed. Please try again.");
     }
   };
 
@@ -72,9 +76,9 @@ export default function CreateProjectPage() {
       });
       
       router.push(`/projects/${projectId}`);
-    } catch (error) {
-      console.error("Failed to create project:", error);
-      alert("Failed to create project. Please try again.");
+} catch (error) {
+      logError(error, { component: 'CreateProjectPage', action: 'createProject' });
+      toast.error("Failed to create project. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

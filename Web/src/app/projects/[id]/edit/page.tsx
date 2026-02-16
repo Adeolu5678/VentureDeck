@@ -10,6 +10,7 @@ import { Id } from '@convex/_generated/dataModel';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useBottomNav } from '@/context/BottomNavContext';
+import { logError } from '@/lib/errorTracking';
 
 export default function EditProjectPage() {
   const router = useRouter();
@@ -80,11 +81,13 @@ export default function EditProjectPage() {
     if (!file) return;
 
     try {
-      // 1. Get upload URL
-      const postUrl = await generateUploadUrl();
+      const { uploadUrl } = await generateUploadUrl({ 
+        filename: file.name, 
+        mimeType: file.type, 
+        sizeBytes: file.size 
+      });
       
-      // 2. Upload file
-      const result = await fetch(postUrl, {
+      const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
         body: file,
@@ -96,7 +99,7 @@ export default function EditProjectPage() {
       setFormData((prev) => ({ ...prev, [field]: storageId }));
       toast.success(`${field === 'logoUrl' ? 'Logo' : 'Pitch Deck'} uploaded successfully`);
     } catch (error) {
-      console.error("Upload failed:", error);
+      logError(error, { component: 'EditProjectPage', action: 'fileUpload', metadata: { field } });
       toast.error("Upload failed. Please try again.");
     }
   };
@@ -121,7 +124,7 @@ export default function EditProjectPage() {
       toast.success('Project updated successfully');
       router.push(`/projects/${projectId}`);
     } catch (error) {
-      console.error("Failed to update project:", error);
+      logError(error, { component: 'EditProjectPage', action: 'updateProject' });
       toast.error("Failed to update project. Please try again.");
     } finally {
       setIsSubmitting(false);

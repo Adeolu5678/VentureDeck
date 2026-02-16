@@ -13,6 +13,7 @@ import MemberMenu from '@/components/MemberMenu';
 import ChannelMenu from '@/components/ChannelMenu';
 import { toast } from 'sonner';
 import { useBottomNav } from '@/context/BottomNavContext';
+import { logError } from '@/lib/errorTracking';
 
 interface Channel {
   _id: Id<'conversations'>;
@@ -137,7 +138,7 @@ export default function WorkspacePage() {
       setShowCreateChannel(false);
       toast.success('Channel created');
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'WorkspacePage', action: 'createChannel' });
       toast.error('Failed to create channel');
     }
   };
@@ -377,7 +378,7 @@ function MemberItem({ memberId, workspaceId, projectId, isCurrentUser, isFounder
       });
       router.push(`/conversations/${conversationId}`);
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'WorkspacePage', action: 'createDirectMessage' });
       toast.error('Failed to start conversation');
     }
   };
@@ -459,7 +460,7 @@ function ApplicationsView({ applications }: { applications: Doc<'applications'>[
       const conversationId = await startInterview({ applicationId: appId });
       router.push(`/conversations/${conversationId}`);
     } catch (error) {
-      console.error("Failed to start interview:", error);
+      logError(error, { component: 'WorkspacePage', action: 'startInterview' });
       alert("Failed to start interview");
     }
   };

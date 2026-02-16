@@ -15,6 +15,19 @@ import { useEffect, useCallback } from 'react';
 import { PremiumButton } from '@/components/ui/PremiumButton';
 import { PremiumCard } from '@/components/ui/PremiumCard';
 import { PitchDeckViewer } from '@/components/PitchDeckViewer';
+import { logError } from '@/lib/errorTracking';
+
+type SoftCircleWithInvestor = Omit<Doc<'soft_circles'>, 'amount'> & {
+  amount: number | null;
+  investor: {
+    _id: Id<'users'>;
+    username: string;
+    displayName?: string;
+    avatarUrl?: string;
+    role?: 'entrepreneur' | 'investor';
+  } | null;
+  isOwnCommitment: boolean;
+};
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -57,7 +70,7 @@ export default function ProjectDetailPage() {
       setIsApplying(false);
       toast.success('Application sent successfully');
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'ProjectDetailPage', action: 'apply' });
       toast.error('Failed to send application');
     }
   }, [user, apply, projectId, applicationRole, applicationMessage]);
@@ -71,7 +84,7 @@ export default function ProjectDetailPage() {
       });
       router.push(`/conversations/${conversationId}`);
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'ProjectDetailPage', action: 'contactFounder' });
       toast.error('Failed to start conversation');
     }
   }, [user, project, createDirectMessage, router]);
@@ -512,7 +525,7 @@ function FeaturesSection({ projectId }: { projectId: Id<'projects'> }) {
 }
 
 function SoftCirclesSection({ projectId }: { projectId: Id<'projects'> }) {
-  const softCircles = useQuery(api.soft_circles.get, { projectId });
+  const softCircles = useQuery(api.soft_circles.get, { projectId }) as SoftCircleWithInvestor[] | undefined;
   
   if (!softCircles || softCircles.length === 0) return null;
 
@@ -531,7 +544,7 @@ function SoftCirclesSection({ projectId }: { projectId: Id<'projects'> }) {
   );
 }
 
-function SoftCircleItem({ softCircle }: { softCircle: Doc<'soft_circles'> }) {
+function SoftCircleItem({ softCircle }: { softCircle: SoftCircleWithInvestor }) {
   const investor = useQuery(api.users.getUser, { id: softCircle.investorId });
 
   if (!investor) return null;
@@ -548,7 +561,9 @@ function SoftCircleItem({ softCircle }: { softCircle: Doc<'soft_circles'> }) {
         </div>
         <div>
           <div className="font-medium text-white text-sm">{investor.displayName || investor.firstName || investor.username}</div>
-          <div className="text-xs text-emerald-400">Committed ${softCircle.amount.toLocaleString()}</div>
+          <div className="text-xs text-emerald-400">
+            {softCircle.amount != null ? `Committed $${softCircle.amount.toLocaleString()}` : 'Amount Private'}
+          </div>
         </div>
       </Link>
       <div className="text-xs text-slate-500">

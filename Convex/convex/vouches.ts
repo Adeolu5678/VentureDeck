@@ -42,19 +42,20 @@ export const list = query({
       .withIndex('by_target', (q) => q.eq('targetId', args.targetId))
       .collect();
 
-    // Enrich with voucher details
-    const enrichedVouches = await Promise.all(
-      vouches.map(async (vouch) => {
-        const voucher = await ctx.db.get(vouch.voucherId);
-        return {
-          ...vouch,
-          voucherName: voucher ? `${voucher.firstName} ${voucher.lastName}` : 'Unknown',
-          voucherAvatar: voucher?.avatarUrl,
-          voucherRole: voucher?.role,
-        };
-      })
-    );
+    if (vouches.length === 0) return [];
 
-    return enrichedVouches;
+    const voucherIds = [...new Set(vouches.map(v => v.voucherId))];
+    const vouchers = await Promise.all(voucherIds.map(id => ctx.db.get(id)));
+    const voucherMap = new Map(vouchers.filter(Boolean).map(v => [v!._id, v!]));
+
+    return vouches.map(vouch => {
+      const voucher = voucherMap.get(vouch.voucherId);
+      return {
+        ...vouch,
+        voucherName: voucher ? `${voucher.firstName} ${voucher.lastName}` : 'Unknown',
+        voucherAvatar: voucher?.avatarUrl,
+        voucherRole: voucher?.role,
+      };
+    });
   },
 });

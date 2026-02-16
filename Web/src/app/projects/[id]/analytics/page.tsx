@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { TractionScoreBadge } from '@/components/ui/TractionScoreBadge';
 import { formatDistanceToNow } from 'date-fns';
+import { logError } from '@/lib/errorTracking';
 
 export default function ProjectAnalyticsPage() {
   const { id } = useParams();
@@ -45,7 +46,7 @@ export default function ProjectAnalyticsPage() {
     try {
       await refreshScore({ projectId: projectId as Id<'projects'> });
     } catch (error) {
-      console.error('Failed to refresh score:', error);
+      logError(error, { component: 'ProjectAnalyticsPage', action: 'refreshScore' });
     }
     setTimeout(() => setIsRefreshing(false), 2000);
   };

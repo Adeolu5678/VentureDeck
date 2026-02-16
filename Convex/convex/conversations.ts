@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { Id } from './_generated/dataModel';
+import { enforceRateLimit } from './rateLimits';
 
 // Create a Direct Message conversation (e.g. Investor -> Founder)
 export const createDirectMessage = mutation({
@@ -299,10 +300,12 @@ export const getConversation = query({
       .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
       .unique();
 
-    if (!user) return null;
+    if (!user) throw new Error('User not found');
+
+    await enforceRateLimit(ctx.db, user._id, 'messages');
 
     const conversation = await ctx.db.get(args.conversationId);
-    if (!conversation) return null;
+    if (!conversation) throw new Error('Conversation not found');
 
     // Authorization check
     let isAuthorized = false;

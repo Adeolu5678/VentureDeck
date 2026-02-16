@@ -11,6 +11,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { logError } from '@/lib/errorTracking';
 
 interface CertificationWithUser {
   _id: Id<"certifications">;
@@ -67,7 +68,7 @@ export default function AdminDashboardPage() {
     try {
       await verifyCertification({ id });
     } catch (error) {
-      console.error("Failed to verify:", error);
+      logError(error, { component: 'AdminDashboardPage', action: 'verifyCertification' });
     }
   };
 
@@ -75,7 +76,7 @@ export default function AdminDashboardPage() {
     try {
       await rejectCertification({ id });
     } catch (error) {
-      console.error("Failed to reject:", error);
+      logError(error, { component: 'AdminDashboardPage', action: 'rejectCertification' });
     }
   };
 
@@ -83,7 +84,7 @@ export default function AdminDashboardPage() {
     try {
       await updateFeatureFlag({ id, enabled: !currentEnabled });
     } catch (error) {
-      console.error("Failed to toggle flag:", error);
+      logError(error, { component: 'AdminDashboardPage', action: 'toggleFeatureFlag' });
     }
   };
 

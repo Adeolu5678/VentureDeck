@@ -66,32 +66,59 @@ export const commit = mutation({
 });
 
 // List soft circles for a project with investor details
+// Access control:
+// - Project owners can see all commitments with amounts
+// - Investors can only see their own commitments with amounts
+// - Public/unauthenticated users see commitments without amounts
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    
+    let currentUser = null;
+    if (identity) {
+      currentUser = await ctx.db
+        .query('users')
+        .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+        .unique();
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error('Project not found');
+    }
+
+    const isProjectOwner = currentUser && project.ownerId === currentUser._id;
+
     const softCircles = await ctx.db
       .query('soft_circles')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
 
-    // Enrich with investor details
-    const enrichedCircles = await Promise.all(
-      softCircles.map(async (circle) => {
-        const investor = await ctx.db.get(circle.investorId);
-        return {
-          ...circle,
-          investor: investor ? {
-            _id: investor._id,
-            username: investor.username,
-            displayName: investor.displayName,
-            avatarUrl: investor.avatarUrl,
-            role: investor.role,
-          } : null,
-        };
-      })
-    );
+    if (softCircles.length === 0) return [];
 
-    return enrichedCircles;
+    const investorIds = [...new Set(softCircles.map(c => c.investorId))];
+    const investors = await Promise.all(investorIds.map(id => ctx.db.get(id)));
+    const investorMap = new Map(investors.filter(Boolean).map(i => [i!._id, i!]));
+
+    return softCircles.map(circle => {
+      const investor = investorMap.get(circle.investorId);
+      const isOwnCommitment = currentUser && circle.investorId === currentUser._id;
+      const canSeeAmount = isProjectOwner || isOwnCommitment;
+
+      return {
+        ...circle,
+        amount: canSeeAmount ? circle.amount : null,
+        investor: investor ? {
+          _id: investor._id,
+          username: investor.username,
+          displayName: investor.displayName,
+          avatarUrl: investor.avatarUrl,
+          role: investor.role,
+        } : null,
+        isOwnCommitment: isOwnCommitment || false,
+      };
+    });
   },
 });
 

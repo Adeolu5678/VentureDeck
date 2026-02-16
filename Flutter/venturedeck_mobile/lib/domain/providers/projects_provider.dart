@@ -24,6 +24,7 @@ final publishedProjectsProvider =
       final repository = ref.watch(projectsRepositoryProvider);
       return repository.getPublishedProjects(
         industry: filter.industry,
+        search: filter.search,
         stage: filter.stage,
         minTractionScore: filter.minTractionScore,
         limit: filter.limit,
@@ -69,6 +70,7 @@ final searchProjectsProvider = FutureProvider.family<List<Project>, String>((
 class ProjectsFilter {
   const ProjectsFilter({
     this.industry,
+    this.search,
     this.stage,
     this.minTractionScore,
     this.limit = 20,
@@ -76,6 +78,7 @@ class ProjectsFilter {
   });
 
   final String? industry;
+  final String? search;
   final ProjectStage? stage;
   final int? minTractionScore;
   final int limit;
@@ -83,6 +86,7 @@ class ProjectsFilter {
 
   ProjectsFilter copyWith({
     String? industry,
+    String? search,
     ProjectStage? stage,
     int? minTractionScore,
     int? limit,
@@ -90,6 +94,7 @@ class ProjectsFilter {
   }) {
     return ProjectsFilter(
       industry: industry ?? this.industry,
+      search: search ?? this.search,
       stage: stage ?? this.stage,
       minTractionScore: minTractionScore ?? this.minTractionScore,
       limit: limit ?? this.limit,
@@ -102,6 +107,7 @@ class ProjectsFilter {
     if (identical(this, other)) return true;
     return other is ProjectsFilter &&
         other.industry == industry &&
+        other.search == search &&
         other.stage == stage &&
         other.minTractionScore == minTractionScore &&
         other.limit == limit &&
@@ -110,7 +116,14 @@ class ProjectsFilter {
 
   @override
   int get hashCode {
-    return Object.hash(industry, stage, minTractionScore, limit, offset);
+    return Object.hash(
+      industry,
+      search,
+      stage,
+      minTractionScore,
+      limit,
+      offset,
+    );
   }
 }
 
@@ -132,6 +145,7 @@ class ProjectActionsNotifier extends AsyncNotifier<void> {
     required String industry,
     required double fundingGoal,
     required double equityOffered,
+    // Unsupported args removed from repo call
     List<String>? tags,
     ProjectStage? stage,
     String? location,
@@ -147,9 +161,9 @@ class ProjectActionsNotifier extends AsyncNotifier<void> {
         industry: industry,
         fundingGoal: fundingGoal,
         equityOffered: equityOffered,
-        tags: tags,
-        stage: stage,
-        location: location,
+        // tags: tags,
+        // stage: stage,
+        // location: location,
       );
 
       // Refresh my projects list
@@ -189,9 +203,9 @@ class ProjectActionsNotifier extends AsyncNotifier<void> {
         industry: industry,
         fundingGoal: fundingGoal,
         equityOffered: equityOffered,
-        tags: tags,
-        stage: stage,
-        location: location,
+        // tags: tags,
+        // stage: stage,
+        // location: location,
         status: status,
       );
 

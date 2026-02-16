@@ -182,7 +182,34 @@ export const list = query({
 export const get = query({
   args: { id: v.id('projects') },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const project = await ctx.db.get(args.id);
+    if (!project) return null;
+
+    // Allow access if project is published
+    if (project.status === 'published') {
+      return project;
+    }
+
+    // For non-published projects, require authentication and ownership
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthenticated');
+    }
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (project.ownerId !== user._id) {
+      throw new Error('Unauthorized');
+    }
+
+    return project;
   },
 });
 
@@ -232,25 +259,19 @@ export const getProjectsIAmMemberOf = query({
 
     if (!user) return [];
 
-    // 1. Find all workspaces where user is a member using the efficient index
     const myWorkspaces = await ctx.db
       .query('workspaces')
       .withIndex('by_member', (q) => q.eq('members', user._id as any))
       .collect();
 
-    // 2. Fetch the projects for these workspaces
-    const projects = [];
-    for (const workspace of myWorkspaces) {
-      if (workspace.projectId) {
-        const project = await ctx.db.get(workspace.projectId);
-        // Exclude projects I own (already shown in "My Projects")
-        if (project && project.ownerId !== user._id) {
-          projects.push(project);
-        }
-      }
-    }
+    if (myWorkspaces.length === 0) return [];
 
-    return projects;
+    const projectIds = [...new Set(myWorkspaces.filter(w => w.projectId).map(w => w.projectId!))];
+    const projects = await Promise.all(projectIds.map(id => ctx.db.get(id)));
+    
+    return projects.filter((project): project is NonNullable<typeof project> => 
+      project !== null && project.ownerId !== user._id
+    );
   },
 });
 
